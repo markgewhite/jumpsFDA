@@ -29,7 +29,7 @@ function landmarks = findGRFlandmarks( tspan, grfFd, lm, opt )
 grf = eval_fd( tspan, grfFd ) - 1;
 
 % the discrete representation must be well behaved so 
-% central differences can be used (no need for the denominator
+% central differences can be used (no need for the denominator)
 grfD1 = grf( 3:end, : ) - grf( 1:end-2, : );
 grfD2 = grfD1( 3:end, : ) - grfD1( 1:end-2, : );
 
@@ -93,7 +93,7 @@ for i = 1:n
     pwrMinIdx = index( minIndex0 );
     tPwrMin( i ) = tspan( pwrMinIdx );
     
-    % --- Find GRF Crossover ---
+    % --- Find PWR Crossover ---
     % find the t-axis crossing indices in PWR derivative after the minimum
     pwrD0Up = pwr( pwrMinIdx+1:tend, i );
     pwrD0Dn = pwr( pwrMinIdx:tend-1, i );   
@@ -129,8 +129,6 @@ tPwrMaxMean = mean( tPwrMax );
 
 % assemble return array structure
 
-%landmarks.mean = tspan(1);
-%landmarks.case = tspan(1)*ones( n, 1 );
 landmarks.mean = 0;
 landmarks.case = zeros( n, 1 );
 
@@ -154,11 +152,9 @@ if lm.pwrmax
     landmarks.mean = [ landmarks.mean, tPwrMaxMean ];
     landmarks.case = [ landmarks.case, tPwrMax ];
 end
+
 landmarks.mean(1) = [];
 landmarks.case(:,1) = [];
-
-%landmarks.mean = [ landmarks.mean, tspan(end) ];
-%landmarks.case = [ landmarks.case, tspan(end)*ones( n, 1 ) ];
 
 
 % display registration points

@@ -8,13 +8,6 @@
 clear;
 
 % ************************************************************************
-%     MASTER OPTION
-% ************************************************************************
-
-dataset = 'Training';
-
-
-% ************************************************************************
 %     Setup file paths
 % ************************************************************************
 
@@ -24,131 +17,11 @@ else
     rootpath = 'C:\Users\markg\Google Drive\PhD\Studies\Jumps';
 end
 
-switch dataset 
-    case 'Training'
-        datapath = [ rootpath '\Data\Processed\Training' ];
-    case 'Testing'
-        datapath = [ rootpath '\Data\Processed\Testing' ];
-    case 'All'
-        datapath = [ rootpath '\Data\Processed\All' ];
-end
+datapath = [ rootpath '\Data\Processed\Training' ];
 
 if ismac
     datapath = strrep( datapath, '\', '/') ;
 end
-
-
-% ************************************************************************
-%   Constants
-% ************************************************************************
-
-g = 9.812; % acceleration due to gravity
-
-tLength = 5000; % (5000) duration in milliseconds %%%% FILTER %%%% 
-tFreq = 1; % sampling frequency
-
-nMeasures = 1; % number of measures under analysis
-vgrfID = 1; % vertical ground reaction force identifier
-vgrfWoaID = 2; % VGRF subset for jumps without arms
-vgrfWaID = 3; % VGRF subset for jumps with arms
-
-subjectRefID = 1; % identifier for subject ID index in ref
-jumpRefID = 2; % identifier for jump ID in ref
-
-
-% ************************************************************************
-%   Command switches
-% ************************************************************************
-
-options.test = 'Registration'; % type of test to perform
-
-options.doTimeNormalisation = false; % whether to do time normalisation
-options.doTruncation = false; % whether to truncate time series at take-off
-options.doFiltering = false; % whether to do low-pass filtering on the GRF data
-options.doCrossValidation = false; % whether to do cross validation to find best value for lambda
-options.doCrossValidation2 = false; % whether to do cross validation to find best value for number of bases
-options.doCrossValidation3 = false; % whether to do validation based on jump height
-options.doDifferentiation = false; % whether to take the first derivative of the smoothed function
-
-options.doCheckFit = false; % whether to check the goodness of fit
-options.doResidualCheck = false; % for this check, whether to check the residuals
-options.doSortCheck = true; % for this check, whether to sort from largest error to smallest
-options.doUseWtFunc = false; % whether to use the weighted functional data object
-options.doPlotDerivatives = false; % whether to plot the function and its first two derivatives
-
-options.lm.doReg0 = true; % flag whether to do landmark registration
-options.lm.doReg0Calc = true; % flag whether to do the calculation (or read from a file)
-options.lm.doReg1 = false; % flag whether to do landmark registration
-options.lm.doReg1Calc = false; % flag whether to do the calculation (or read from a file)
-options.ct.doReg = false; % flag whether to do continuous registration
-options.ct.doRegCalc = false; % flag whether to do the calculation (or read from a file)
-
-options.lm.doCurvePlots = false; % flag whether to show registration curve plots
-options.lm.doRegHistogram = false; % flag whether to show the spread of landmark points
-options.lm.doRegPlots = false; % flag whether to show registration curve plots
-
-options.pca.doShowComponents = false; % flag whether to show plots of PCA components
-options.pca.doVarimaxRotation = true; % flag whether to do a vaximax rotation on PCA components
-options.pca.doComponentsValidation = false; % flag whether to assess performance fit
-options.pca.doCentreFunctions = true; % flag whether to centre about the mean curve
-
-
-% ************************************************************************
-%   Baseline settings
-% ************************************************************************
-
-if options.doTruncation
-    preLength = tLength; % time duration before take-off
-    postLength = 0; % time duration after take-off
-else
-    preLength = tLength; % time duration before take-off
-    postLength = tLength; % time duration after take-off
-end   
-tSpan = -preLength:1/tFreq:postLength; % time domian in seconds 
-
-setup.data.tFreq = tFreq; % time intervals per second
-setup.data.tLength = tLength; % duration of the extracted dataset 
-setup.data.maxLength = tFreq*tLength+1; % maximum possible duration
-setup.data.maxLength1 = tFreq*preLength+1;
-setup.data.maxLength2 = tFreq*postLength+1;
-setup.data.form = 'Vertical'; % data representation
-setup.data.cutoffFreq = 15; % 15 Hz cut-off frequency for filtering
-setup.data.initial = 1; % initial padding value
-
-setup.Fd.basis = 400; % number of bases
-setup.Fd.basisOrder = 5; % 5th order for a basis expansion of quartic splines
-setup.Fd.penaltyOrder = 3; % roughness penalty
-setup.Fd.lambda = 1E0 ; % roughness penalty
-setup.Fd.names = [{'Time (ms)'},{'Jumps'},{'GRF (BW)'}]; % axes names
-
-setup.lm.basis = 10; % numbers of bases for landmark registration
-setup.lm.basisOrder = 1; % time warping basis order for landmark registration
-setup.lm.lambda = 1E0; % roughness penalty for landmark registration
-setup.lm.yLambda = 1E0; % roughness penalty to prevent wiggles in y
-setup.lm.searchLambda = 1E5; % heavily smoothed for LM search
-setup.lm.filename = fullfile(datapath,'registrationLM.mat'); % where to save the analysis
-
-setup.lm.set.grfmin = false; % use VGRF minimum as a landmark?
-setup.lm.set.grfcross = false; % use VGRF crossing point as a landmark?
-setup.lm.set.pwrmin = false; % use Power minimum as a landmark?
-setup.lm.set.pwrcross = false; % use Power crossing point as a landmark?
-setup.lm.set.pwrmax = false; % use Power maximum as a landmark?
-
-setup.ct.basis = 50; % numbers of bases for continuous registration
-setup.ct.basisOrder = 4; % time warping basis order for continuous registration
-setup.ct.lambda = 1E-1; % roughness penalty for continuous registration
-setup.ct.filename = fullfile(datapath,'registrationCT.mat'); % where to save the analysis
-
-setup.pca.nComponents = 15; % number of PCA components to be retained
-
-
-% ************************************************************************
-%   Read data file
-% ************************************************************************
-
-
-% read the results file
-load(fullfile(datapath,'processedjumpdata.mat'));
 
 
 % ************************************************************************
@@ -158,240 +31,368 @@ load(fullfile(datapath,'processedjumpdata.mat'));
 cd(datapath);
 
 % read the processed data file
-load(fullfile(datapath,'processedjumpdata.mat'));
-
-
-% nSubjects = 1; % **** OVERRIDE ****
+load(fullfile(datapath,'compactjumpdata.mat'));
 
 
 % ************************************************************************
-%   Normalise force
+%   Constants
 % ************************************************************************
 
-% VGRF data (vertical jumps only)
-nTotal = sum( nJumpsPerSubject );
-subjectExclusions = find( sDataID==100 ); % [2,3];
+g = 9.812; % acceleration due to gravity
+
+% tLength = 10000; % (5000) duration in milliseconds %%%% FILTER %%%% 
+tFreq = 1; % sampling frequency
+
+nSets = 3; % number of data sets (1 = All; 2 = CMJ(NA); 3 = CMJ(A))
+nStd = 2; % number of methods to standardise length
+nModels = 5; % number of models
+nProc = (2^4-1)+2; % number of curves processes
+
+% presets based on approx 1E-3 mean GCV error
+%preset.nBasis = [ 670 140; 530 135; 660 150 ];
+%preset.lambda = [ 1E2 1E2; 1E2 1E2; 1E2 1E2 ];
+
+% presets based on minimising GCV error
+%preset.nBasis = [ 1180 350; 1180 335; 950 375 ];
+%preset.lambda = [ 1E0 1E0; 1E0 1E0; 1E0 1E0 ];
+
+% presets based on not exceed jump performance error threshold
+preset.nBasis = [ 190 80; 190 80; 190 80 ];
+preset.lambda = [ 1E3 1E3; 1E3 1E3; 1E3 1E3 ];
+
+% ************************************************************************
+%   Command switches
+% ************************************************************************
+
+options.test = 'None'; % type of test to perform
+
+
+options.doFiltering = false; % whether to do low-pass filtering on the GRF data
+options.doInitialFit = false; % whether to fit with max flexibility first
+
+options.doCheckFit = false; % whether to check the goodness of fit
+options.doResidualCheck = false; % for this check, whether to check the residuals
+options.doSortCheck = false; % for this check, whether to sort from largest error to smallest
+options.doUseWtFunc = false; % whether to use the weighted functional data object
+options.doPlotDerivatives = false; % whether to plot the function and its first two derivatives
+
+options.reg.doCurvePlots = false; % flag whether to show registration curve plots
+options.reg.doRegHistogram = false; % flag whether to show the spread of landmark points
+options.reg.doRegPlots = false; % flag whether to show registration curve plots
+
+
+% ************************************************************************
+%   Baseline settings
+% ************************************************************************
+
+setup.data.tFreq = 1; % time intervals per second
+setup.data.sampleFreq = 1000; % sampling frequency
+setup.data.cutoffFreq = 10; % 15 Hz cut-off frequency for filtering
+setup.data.padding = 500; % milliseconds of padding for filtering
+setup.data.form = 'Vertical'; % data representation
+setup.data.initial = 1; % initial padding value
+setup.data.threshold1 = 0.08; % primary detection threshold 
+setup.data.threshold2 = 0.01; % secondary detection threshold
+setup.data.sustained = 100; % milliseconds for secondary threshold 
+
+setup.Fd.basisOrder = 4; % 5th order for a basis expansion of quartic splines
+setup.Fd.penaltyOrder = 2; % roughness penalty
+setup.Fd.lambda = 1E2 ; % roughness penalty
+setup.Fd.names = [{'Time (ms)'},{'Jumps'},{'GRF (BW)'}]; % axes names
+setup.Fd.tolerance = 0.001; % performance measure error tolerance
+
+setup.reg.nIterations = 2; % Procrustes iterations
+setup.reg.nBasis = 10; % numbers of bases for registration
+setup.reg.basisOrder = 3; % time warping basis order for registration
+setup.reg.wLambda = 1E-2; % roughness penalty for time warp
+% *** CHANGE? ***
+setup.reg.XLambda = 1E0; % roughness penalty to prevent wiggles in y
+
+setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
+setup.reg.lm.grfcross = false; % use VGRF crossing point as a landmark?
+setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
+setup.reg.lm.pwrcross = false; % use Power crossing point as a landmark?
+setup.reg.lm.pwrmax = false; % use Power maximum as a landmark?
+
+setup.pca.nComp = 15; % number of PCA components to be retained
+setup.pca.nCompWarp = 8; % number of PCA components to be retained
+
+setup.models.nRepeats = 2; % number of repetitions of CV
+setup.models.nFolds = 5; % number of CV folds for each repetition
+setup.models.seed = 12345; % random seed for reproducibility
+setup.models.spec = 'linear'; % type of GLM
+setup.models.upper = 'linear'; % linear model without interactions
+setup.models.criterion = 'bic'; % predictor selection criterion
+setup.models.RSqMeritThreshold = 0.8; % merit threshold for stepwise selection
+
+setup.filename = fullfile(datapath,'jumpsAnalysis2.mat'); % where to save the analysis
+
+
+
+% ************************************************************************
+%   Extract data
+% ************************************************************************
+
+% exclude jumps from subjects in the second data collection
+subjectExclusions = find( ismember( sDataID, ...
+            [ 14, 39, 68, 86, 87, 11, 22, 28, 40, 43, 82, 88, 95, 97, ...
+              100, 121, 156, 163, 196 ] ) );
+
+% specific jumps that should be excluded
 jumpExclusions = [3703 3113 2107 2116 0503 0507 6010 1109];
-vgrfData = cell( nTotal, 1 );
-vgrfRef = zeros( nTotal, 2 );
-withArms = false( nTotal, 1 );
-initiation = zeros( nTotal, 1 );
-takeoff = zeros( nTotal, 1 );
-flightTime = zeros( nTotal, 1 );
-k = 0;
-for i = 1:nSubjects
-    for j = 1:nJumpsPerSubject(i)
-        jump = jumpOrder( sJumpID==sDataID(i), j );
-        jumpID = sDataID(i)*100+j;
-        duration = grf.takeoff(i,j)-grf.initiation(i,j)+1;
-        if jump{1}(1) == 'V' ...
-                && duration < setup.data.maxLength ...
-                && ~ismember( i, subjectExclusions ) ...
-                && ~ismember( jumpID, jumpExclusions )
-            k = k+1;
-            if options.doTruncation
-                vgrfData{ k } = ...
-                    grf.raw{i,j,totalID}( ...
-                        grf.initiation(i,j):grf.takeoff(i,j), vAxisID ) ...
-                               / bwall(i,j);
-            else
-                vgrfData{ k } = ...
-                    grf.raw{i,j,totalID}(:,vAxisID) ...
-                               / bwall(i,j);
-            end
-            vgrfRef( k, subjectRefID ) = i;
-            vgrfRef( k, jumpRefID ) = j;
-            withArms( k ) = (length(jump{1}) == 2);
-            initiation( k ) = grf.initiation(i,j);
-            takeoff( k ) = grf.takeoff(i,j);
-            flightTime( k ) = jumpflighttime( ...
-                                    grf.raw{i,j,totalID}(:,vAxisID), 1 );
-        end
-    end
-end
-vgrfData = vgrfData(1:k);
-vgrfRef = vgrfRef(1:k,:);
-withArms = withArms(1:k,:);
-initiation = initiation(1:k);
-takeoff = takeoff(1:k);
-flightTime = flightTime(1:k);
 
-% combine all datasets together
-curveSet = { vgrfData, vgrfData(~withArms), vgrfData(withArms) };
-curveIDSet = { vgrfRef, vgrfRef(~withArms,:), vgrfRef(withArms,:) };
-curveTOSet = { takeoff, takeoff(~withArms), takeoff(withArms) };
-curveFTSet = { flightTime, flightTime(~withArms), flightTime(withArms) };
+[ rawData, refSet, typeSet ] =  extractVGRFData( ... 
+                                    grf, bwall, nJumpsPerSubject, ...
+                                    sDataID, sJumpID, jumpOrder, ...
+                                    subjectExclusions, jumpExclusions );
+
+                                
+% ************************************************************************
+%   Smooth data - first cut
+% ************************************************************************
+
+
+tSpan0 = cell( nSets, 1 );
+for i = 1:nSets
+    
+    % standardised length with padding
+    maxLen = max( cellfun( @length, rawData{i} ) );
+    tSpan0{i} = -maxLen+1:0; % time domain in milliseconds 
+    
+    rawData{i} = padData( rawData{i}, ...
+                           maxLen, ...
+                           setup.data.initial );
+
+    % filter data
+    if options.doFiltering
+        rawData{i} = filterVGRF( rawData{i}, ...
+                                    setup.data.sampleFreq, ...
+                                    setup.data.cutoffFreq, ...
+                                    setup.data.padding );
+    end
+                       
+end 
 
 
 % ************************************************************************
-%   Performance the functional data analysis
+%   Determine smoothing levels
 % ************************************************************************
 
-jumpperf.bwall = bwall;
+perf = cell( nSets );
+tSpan = cell( nSets, nStd );
+vgrfData{i} = cell( nSets, nStd );
 
-grfFd = cell(nMeasures,1);
-grfFdParams = cell(nMeasures,1);
-grfPCA = cell(nMeasures,1);
-warpFd = cell(nMeasures,1);
-LM = cell(nMeasures,1);
-name = cell( nMeasures, 1 );
-results = cell(2*nMeasures,2);
-m = 0;
-for i = 1:nMeasures
-    
-    tic;
-    
-    % specify the registration setup
-    switch options.test
-        case 'Registration'
-            ib = dec2bin( i-1, 5 );
-            options.doTimeNormalisation = (ib(1)=='1');
-            if options.doTimeNormalisation
-                setup.Fd.basis = 256;
-            else
-                setup.Fd.basis = 450;
-            end
-            options.lm.doReg0 = not(strcmp( ib(2:5), '0000' ));
-            setup.lm.set.grfmin = (ib(5)=='1');
-            setup.lm.set.pwrmin = (ib(4)=='1');
-            setup.lm.set.pwrcross = (ib(3)=='1');
-            setup.lm.set.pwrmax = (ib(2)=='1');
-            name{ i } = [ 'VGRF' ib ];
-        case 'LMorder'
-            setup.lm.basisOrder = i-1;
-            name{ i } = [ 'VGRF Order' num2str(i-1) ];
-        case 'LMlambda'
-            exponent = i-2;
-            setup.lm.lambda = 10^exponent;
-            name{ i } = [ 'VGRF Lambda 10E' num2str(exponent) ];
-        case 'LMnbasis'
-            setup.lm.basis = i*5;
-            name{ i } = [ 'VGRF nBases ' num2str(setup.lm.basis) ];
-    end
-    
-    disp(['MEASURE: ' char(name(i))]);
+for i = 1:nSets
+   
+    % determine jump initation
+    tStart = jumpInit( rawData{i}, ...
+                       setup.data.threshold1, ...
+                       setup.data.threshold2, ...
+                       setup.data.sustained );
+                   
+   
+    for j = 1:nStd
+
+       switch j
+           case 1
+               % pad out to longest series
+               fixStart = min( tStart );
+               
+               % truncate pre-padded series to this length
+               vgrfData{i,j} = rawData{i}( fixStart:end, : );              
+               
+           case 2
+               % time normalising to median series length
+               fixStart = fix( median( tStart ) );
+               
+               % truncate times series and time normalise
+               vgrfData{i,j} = timeNormData( rawData{i}, ...
+                                         tStart, ...
+                                         fixStart );
+                                                                         
+       end
        
-    % perform the functional data analysis
-    [grfFd{i}, grfFdParams{i}, grfPCA{i}, warpFd{i}, LM{i}] = ...
-                                    performFDA( ...
-                                                vgrfData(~withArms), ...
-                                                tSpan, ...
-                                                takeoff, ...
-                                                setup, ...
-                                                options, ...
-                                                @findGRFlandmarks, ...
-                                                []);  
-    
-    % recalculate jump performances
-    if not(options.doTimeNormalisation)
-        [newperf.height, newperf.peakPower] = ...
-                            jumpperf_pca(tSpan,grfPCA{i}.unrotated);
-    else
-        newperf.height = zeros( nSubjects, nJumps );
-        newperf.peakPower = zeros( nSubjects, nJumps );
+       % compute jump performances from the truncated raw data
+       if j == 1
+           perf{i} = jumpperf( vgrfData{i,j} );
+       end
+       
+       % store time span
+       fixLen = size( vgrfData{i,j}, 1 );
+       tSpan{i,j} = -fixLen+1:0;
+       
+       if options.doInitialFit
+            % one basis function per data point
+            setup.Fd.nBasis = fixLen + setup.Fd.basisOrder + 2;
+            validateSmoothing(  vgrfData{i,j}, ...
+                                tSpan{i,j}, ...
+                                setup.Fd, ...
+                                perf{i} );
+            pause;
+       end
+       
     end
     
-    % generate the output tables
+end
 
-    % 1: unrotated PCA scores
-    fullname = [num2str(i,'%02d') '-' name{i} 'UA'];
-    m = m+1;
-    [ results{m,1}, results{m,2} ] = outputPCAtables( ...
-                    fullname, vgrfRef, sDataID, jumpOrder, sJumpID, ...
-                    grfFd{i}, ...
-                    grfPCA{i}.unrotated, jumpperf, newperf );
-                
-    % 2: time domain and time warp PCA scores
-    if options.lm.doReg0 || options.ct.doReg
-        fullname = [num2str(i,'%02d') '-' name{i} 'UW'];
-        m = m+1;
-        [ results{m,1}, results{m,2} ] = outputPCAtables( ...
-                        fullname, vgrfRef, sDataID, jumpOrder, sJumpID, ...
-                        grfFd{i}, ...
-                        grfPCA{i}.warp, jumpperf, newperf );
-    end        
-        
-    % 3: varimax PCA scores
-    if options.pca.doVarimaxRotation
-        if not(options.doTimeNormalisation)
-            [newperf.height, newperf.peakPower] = ...
-                                jumpperf_pca(tSpan,grfPCA{i}.varimax);
-        else
-            newperf.height = zeros( nSubjects, nJumps );
-            newperf.peakPower = zeros( nSubjects, nJumps );
-        end
-        fullname = [num2str(i,'%02d') '-' name{i} 'VA'];
-        m = m+1;
-        [ results{m,1}, results{m,2} ] = outputPCAtables( ...
-                        fullname, vgrfRef, sDataID, jumpOrder, sJumpID, ...
-                        grfFd{i}, ...
-                        grfPCA{i}.varimax, jumpperf, newperf );
+
+
+% ************************************************************************
+%   Begin functional data analysis
+% ************************************************************************
+
+vgrfFd = cell( nSets, nStd, nProc );
+warpFd = cell( nSets, nStd, nProc );
+fdPar = cell( nSets, nStd );
+decomp = cell( nSets, nStd, nProc );
+name = strings( nSets, nStd, nProc );
+
+vgrfPCA = cell( nSets, nStd, nProc );
+vgrfACP = cell( nSets, nStd, nProc );
+
+
+
+results = cell( nSets, nStd, nProc );
+models = cell( nSets, nStd, nProc );
+performance = cell( nSets, nStd, nProc );
+
+load( setup.filename );
+
+
+
+% set random seed for reproducibility
+rng( setup.models.seed );
+
+for i = 1:nSets
+    
+    % setup partitioning for all models using this data set   
+    partitions = kFoldSubjectCV(  refSet{i}(:,1), ...
+                                  setup.models.nRepeats, ...
+                                  setup.models.nFolds );
+    
+    for j = 1:nStd
+
+       % use presets specific to padding or time normalisation
+       fdSetup = setup.Fd;
+       fdSetup.nBasis = preset.nBasis(i,j);
+       fdSetup.lambda = preset.lambda(i,j);
+
+       % generate the smooth curves
+       if isempty( vgrfFd{i,j,1} ) || isempty( fdPar{i,j} )
+           [ vgrfFd{i,j,1}, fdPar{i,j} ] = smoothVGRF(  ...
+                                                vgrfData{i,j}, ...
+                                                tSpan{i,j}, ...
+                                                fdSetup, ...
+                                                options );
+           name{i,j,1} = [ num2str(i) '-' num2str(j) 'VGRF----' ];
+       end
+             
+       % compute jump performances from the padded curves
+       %if j == 1
+       %     perf{i} = jumpperf_fd( vgrfFd{i,j,1} );
+       %end
+       
+       
+       for k = 1:nProc
+           
+           if k > 1
+               % processing includes regression
+               
+               % select landmarks to find
+               kbin = dec2bin( k-2, 4 );
+               setup.reg.lm.grfmin = (kbin(1)=='1');
+               setup.reg.lm.pwrmin = (kbin(2)=='1');
+               setup.reg.lm.pwrcross = (kbin(3)=='1');
+               setup.reg.lm.pwrmax = (kbin(4)=='1');
+               name{i,j,k} = [ num2str(i) '-' num2str(j) 'VGRF' kbin ];
+
+               % register the curves
+               if isempty( vgrfFd{i,j,k} ) ...
+                       || isempty( warpFd{i,j,k} ) ...
+                       || isempty( decomp{i,j,k} )
+                   
+                    [ vgrfFd{i,j,k}, warpFd{i,j,k}, decomp{i,j,k} ] = ...
+                                  registerVGRF( tSpan{i,j}, ...
+                                                vgrfFd{i,j,1}, ...
+                                                setup.reg, ...
+                                                options.reg );
+               
+               end
+                                                                      
+           end
+           
+           if isempty( vgrfPCA{i,j,k} )
+                                
+               % run principal component analsyis
+               vgrfPCA{i,j,k} = pcaVGRF( vgrfFd{i,j,k}, ...
+                                          fdPar{i,j}, ...
+                                          warpFd{i,j,k}, ...
+                                          setup.pca.nComp, ...
+                                          setup.pca.nCompWarp );
+                 
+           end
+           
+           if isempty( vgrfACP{i,j,k} )
+               
+               % run analysis of characterising phases
+               vgrfACP{i,j,k} = acpVGRF( tSpan{i,j}, ...
+                                         vgrfFd{i,j,k}, ...
+                                         warpFd{i,j,k}, ...
+                                         vgrfPCA{i,j,k} );
+                             
+           end
+           
+           % store data
+           %save( setup.filename, ...
+           %             'vgrfFd', 'warpFd', 'decomp', 'name', 'fdPar', ...
+           %             'vgrfPCA', 'vgrfACP' );
                     
-        if options.lm.doReg0 || options.ct.doReg
-            fullname = [num2str(i,'%02d') '-' name{i} 'VW'];
-            m = m+1;
-            [ results{m,1}, results{m,2} ] = outputPCAtables( ...
-                            fullname, vgrfRef, sDataID, jumpOrder, sJumpID, ...
-                            grfFd{i}, ...
-                            grfPCA{i}.warp, jumpperf, newperf );
-        end  
+                    
+                                        
+           % generate output tables
+           if isempty( results{i,j,k} ) 
+                    results{i,j,k} = outputTable( name{i,j,k}, ...
+                                        refSet{i}, ...
+                                        typeSet{i}, ...
+                                        perf{i}, ...
+                                        vgrfPCA{i,j,k}, ...
+                                        vgrfACP{i,j,k}, ...
+                                        setup );
+           end
+                                    
+           % fit models to the data
+           models{i,j,k} = fitVGRFModels( ...
+                                    results{i,j,k}, ...
+                                    partitions, setup, ...
+                                    models{i,j,k} );
+                                                  
+                                       
+                                        
+       end
+       
+       
     end
-        
-    duration = toc;
-    disp(['Processing time = ' num2str(duration)]);
     
 end
-results = results(1:m,:);
 
 
 % ************************************************************************
-%   Save the results files
+%   Compile and save the results table
 % ************************************************************************
 
-% find the broadest width to the results tables
-maxN = 0;
-for i = 1:m
-    maxN = max(maxN,size(results{i,1},2));
-end
+save( setup.filename, ...
+      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+      'vgrfPCA', 'vgrfACP', ...
+      'models' );
 
-% standardise the results table widths
-for i = 1:m
-    if size(results{i,1},2)<maxN
-        rows = size(results{i,1},1);
-        cols = size(results{i,1},2);
-        results{i,1} = [results{i,1} array2table(zeros(rows,maxN-cols))];
-        for j = cols-9:maxN-10
-            results{i,1}.Properties.VariableNames{10+j} = char("PCA"+j);
-        end
-    end
-end
-
-% combine the results tables together
-stdResults = results{1,1};
-longResults = results{1,2};
-for i = 2:m
-    stdResults = outerjoin(stdResults,results{i,1},'MergeKeys',true);
-    longResults = outerjoin(longResults,results{i,2},'MergeKeys',true);
-end
-    
-stdName = fullfile(datapath,'All PCA-ACP Results.csv');
-writetable(stdResults,stdName,'WriteRowNames', true);
-disp(['Output file saved: ' stdName]);
-
-longName = strcat(stdName(1:end-4),'-long.csv');
-writetable(longResults,longName,'WriteRowNames', true);
-disp(['Output file saved: ' longName]);
+longResults = compileResults( results );
+longPerformance = compileResults( performance );
+longInclude = compileResults( models, 'incl' );
+longCoeff = compileResults( models, 'coeff' );
+longTStat = compileResults( models, 'tStat' );
+longIncludeW = compileResults( models, 'inclW' );
+longCoeffW = compileResults( models, 'coeffW' );
+longTStatW = compileResults( models, 'tStatW' );
 
 
-% ************************************************************************
-%   Save the Matlab variables
-% ************************************************************************
-
-save(fullfile(datapath,'GRFFeatures-Test.mat'), ...
-         'grfFd', 'grfFdParams', ...
-         'LM', 'warpFd', ...
-         'grfPCA', ...
-         'curveSet', 'curveIDSet', 'curveTOSet', 'curveFTSet', ...
-         'stdResults');
-disp(['Matlab file saved: ' fullfile(datapath,'GRFFeatures-Test.mat')]);
    

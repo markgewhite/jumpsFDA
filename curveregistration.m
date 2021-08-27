@@ -5,8 +5,7 @@
 % Parameters:
 %       t: timespan (array of time points)
 %       xFd: curve to be registered (functional data object)
-%       plotcases: range of cases to plot
-%       landmarks: (optional) structure of .mean and .cases  of landmark times
+%       lm: (optional) structure of .mean and .cases  of landmark times
 %       basis: number of bases (LM only)
 %       order: basis order (LM only)
 %       lambda: warping roughness penalty (LM only)
@@ -20,42 +19,46 @@
 % ************************************************************************
 
 
-function [xFdReg,warpFdReg,wFdReg] = curveregistration(t,xFd,plotcases,landmarks, ...
-                                                basis,order,lambda,xlambda)
+function [ XFdReg, warpFdReg, WFdReg ] = curveregistration( ...
+                                            t, XFd, lm, ...
+                                            basis, order, ...
+                                            lambda, xlambda)
 
 monotonic = true; % time does not go backwards
 
 %  Set up a simply monomial basis for landmark registration
 %  This will compute warping functions that interpolate the landmark times
 
-if isempty(landmarks)
-    wBasisReg = create_bspline_basis([t(1),t(end)],basis,order);
+if isempty(lm)
+    wBasisReg = create_bspline_basis( [t(1),t(end)], basis, order );
 else
-    wBasisReg = create_bspline_basis([t(1),t(end)],basis,order, ...
-                                        [ t(1) landmarks.mean t(end) ]);
+    wBasisReg = create_bspline_basis( [t(1),t(end)], basis, order, ...
+                                        [ t(1) lm.mean t(end) ]);
 end
-warpFdReg = fd(zeros(basis,1),wBasisReg);
-wFdParReg = fdPar(warpFdReg,1,lambda);
+warpFdReg = fd( zeros(basis,1), wBasisReg );
+wFdParReg = fdPar( warpFdReg, 1, lambda );
 
-if isempty(landmarks)
+if isempty(lm)
     % perform continuous registration
-    xMeanFd = mean(xFd);
-    [xFdReg,warpFdReg,wFdReg] = register_fd(xMeanFd,xFd,wFdParReg);
+    XMeanFd = mean(XFd);
+    [ XFdReg, warpFdReg, WFdReg ] = register_fd( XMeanFd, XFd, wFdParReg) ;
+    
 else
     % perform landmark registration
-    [xFdReg,warpFdReg,wFdReg] = landmarkreg(xFd,landmarks.case,landmarks.mean, ...
+    [XFdReg,warpFdReg,WFdReg] = landmarkreg( XFd, lm.case, lm.mean, ...
                                 wFdParReg,monotonic,xlambda);
+                            
 end
 
 if ~isempty(plotcases)
     % plot a selection of cases
     % generate the derivatives
-    dxFd = deriv(xFd,1);
-    dxFdReg = deriv(xFdReg,1);
+    dxFd = deriv(XFd,1);
+    dxFdReg = deriv(XFdReg,1);
 
     % evaluate the functions
-    xPts = eval_fd(t,xFd);
-    xPtsReg = eval_fd(t,xFdReg);
+    xPts = eval_fd(t,XFd);
+    xPtsReg = eval_fd(t,XFdReg);
     dxPts = eval_fd(t,dxFd);
     dxPtsReg = eval_fd(t,dxFdReg);
     warpPtsReg = eval_fd(t,warpFdReg);
@@ -72,8 +75,8 @@ if ~isempty(plotcases)
              [1,t(end)],[0,0],'b:');
         ymax = max(xPtsReg(:,i),xPts(:,i));
         ymin = min(xPtsReg(:,i),xPts(:,i));
-        for j = 1:length(landmarks.mean)
-            plot([landmarks.mean(j),landmarks.mean(j)],[ymin,ymax],'b:');
+        for j = 1:length(lm.mean)
+            plot([lm.mean(j),lm.mean(j)],[ymin,ymax],'b:');
         end
         hold off;
         xlabel('Time t');
@@ -88,8 +91,8 @@ if ~isempty(plotcases)
              [1,t(end)],[0,0],'b:');
         ymax = max(dxPtsReg(:,i),dxPts(:,i));
         ymin = min(dxPtsReg(:,i),dxPts(:,i));
-        for j = 1:length(landmarks.mean)
-            plot([landmarks.mean(j),landmarks.mean(j)],[ymin,ymax],'b:');
+        for j = 1:length(lm.mean)
+            plot([lm.mean(j),lm.mean(j)],[ymin,ymax],'b:');
         end
         hold off;
         xlabel('Time t');
@@ -101,8 +104,8 @@ if ~isempty(plotcases)
         plot(t,warpPtsReg(:,i),'b-', ...
              [t(1),t(end)],[t(1),t(end)],'b--');
         hold on;
-        for j = 1:length(landmarks.mean)
-            plot(landmarks.mean(j),landmarks.case(i,j),'o');
+        for j = 1:length(lm.mean)
+            plot(lm.mean(j),lm.case(i,j),'o');
         end
         hold off;
         xlabel('Time t');
