@@ -8,14 +8,11 @@
 %       setup: parameters to use
 %
 % Outputs:
-%       models: structure listing the fitted models
-%       performance: table listing their performance
+%       models: cell array of structure listings of model performance 
 %
 % ************************************************************************
 
-function [ performance, models ] = fitVGRFModels( ...
-                            results, trnSelect, setup, ...
-                            performance, models )
+function models = fitVGRFModels( results, trnSelect, setup, models )
 
 
 % setup partitions
@@ -30,11 +27,11 @@ dataset = results.Dataset(1,:);
 doClassifiers = length(unique( results.Arms ))==2;
 
 % define models
-nModels = 3 + 2*doClassifiers;
-modelName = { 'JHtov', 'JHwd', 'PP', 'jumpType', 'jumpTypeCovar' };
-modelDist = { 'normal', 'normal', 'normal', 'binomial', 'binomial' };
-modelLink = { 'identity', 'identity', 'identity', 'logit', 'logit' };
-outcomeIdx = [ 5, 6, 7, 4, 4 ];
+nModels = 3 + doClassifiers;
+modelName = { 'JHtov', 'JHwd', 'PP', 'jumpType' };
+modelDist = { 'normal', 'normal', 'normal', 'binomial' };
+modelLink = { 'identity', 'identity', 'identity', 'logit' };
+outcomeIdx = [ 5, 6, 7, 4 ];
 
 % define predictor subsets
 Pred1st = 8;
@@ -45,7 +42,7 @@ predIdxSet{2} = Pred1st+nPred : Pred1st+2*nPred-1;
 predIdxSet{3} = Pred1st+2*nPred : Pred1st+3*nPred-1;
 predIdxSet{4} = Pred1st+3*nPred : Pred1st+4*nPred-1;
 
-if isempty( performance ) || isempty( models )       
+if isempty( models )       
 
     % define model performance table
     varNames = { 'Dataset', 'Model', 'PredictorSet', ...
@@ -53,16 +50,16 @@ if isempty( performance ) || isempty( models )
                     'TestRSq', 'TestRSq_NoWarp' };
     varTypes = { 'string', 'string', 'string', ...
                     'double', 'double', 'double', 'double' };
-    performance = table( ...
+    models.perf = table( ...
                 'Size', [ nModels*nPredSets length(varNames) ], ...
                 'VariableNames', varNames, ...
                 'VariableTypes', varTypes );
      
     % define model definition tables
     varNames = [ { 'Dataset', 'Model', 'PredictorSet' } ...
-                    results.Properties.VariableNames(8:8+nPred) ];
+                    results.Properties.VariableNames(8:7+nPred) ];
     varTypes = [ { 'string', 'string', 'string' } ...
-                    repmat( {'double'}, 1, nPred+1) ];
+                    repmat( {'double'}, 1, nPred) ];
     models.incl = table( ...
                 'Size', [ nModels*nPredSets length(varNames) ], ...
                 'VariableNames', varNames, ...
@@ -72,6 +69,8 @@ if isempty( performance ) || isempty( models )
     models.coeffW = models.incl;     
     models.tStat = models.incl; 
     models.tStatW = models.incl;
+    models.coeffRSq = models.incl;
+    models.coeffRSqW = models.incl;
 
     newFit = true;
     
@@ -83,19 +82,26 @@ end
 
 
 
-m = 0;
-for i = 1:nModels
+m = 12; %%%%% TEMP
+for i = 4 % 1:nModels
 
-    for j = 1:nPredSets
+    for j = [1 4 ] % 1:nPredSets
         
-        m = m + 1;
+        %m = m + 1;
+        % TEMPORARY
+        if j==1
+            m = m + 1;
+        else
+            m = m + 3;
+        end
+        
         if newFit 
             % carry out model fitting without stepwise selection
             doStepwise = false;
                                 
         else
             % check the fixed model above a performance threshold
-            if performance.TestRSq(m) > setup.models.RSqMeritThreshold
+            if models.perf.TestRSq(m) > setup.models.RSqMeritThreshold
                 % fit a new model with stepwise selection
                 doStepwise = true;
             else
@@ -107,7 +113,7 @@ for i = 1:nModels
         
         if newFit
             % setup record    
-            performance = setupRecord( performance, m, ...
+            models.perf = setupRecord( models.perf, m, ...
                                 dataset, modelName{i}, predSetName{j} );
             models.incl = setupRecord( models.incl, m, ...
                                 dataset, modelName{i}, predSetName{j} );
@@ -121,14 +127,13 @@ for i = 1:nModels
                                 dataset, modelName{i}, predSetName{j} );
             models.tStatW = setupRecord( models.tStatW, m, ...
                                 dataset, modelName{i}, predSetName{j} );
+            models.coeffRSq = setupRecord( models.coeffRSq, m, ...
+                                dataset, modelName{i}, predSetName{j} );
+            models.coeffRSqW = setupRecord( models.coeffRSqW, m, ...
+                                dataset, modelName{i}, predSetName{j} );
         end
             
-        if i < 5
-            predIdxAll = predIdxSet{j};
-        else
-            % add covariate
-            predIdxAll = [ predIdxSet{j} 5 ];
-        end
+        predIdxAll = predIdxSet{j};
                
         nPW = length(predIdxAll) - setup.pca.nCompWarp;
         predIdxAmpl = predIdxAll( 1:nPW );
@@ -146,6 +151,7 @@ for i = 1:nModels
         inModel = false( nPartitions, nP, 2 );
         coeff = zeros( nPartitions, nP, 2 );
         tStat = zeros( nPartitions, nP, 2 );
+        coeffRSq = zeros( nPartitions, nP, 2 );
         
         for k = 1:nPartitions          
       
@@ -156,8 +162,8 @@ for i = 1:nModels
                                 [ predIdxAll outcomeIdx(i) ] );
     
             % fit the full model with all predictors
-            [ trnRSq(k,1), tstRSq(k,1), ...
-                inModel(k,:,1), coeff(k,:,1), tStat(k,:,1) ] = ...
+            [ trnRSq(k,1), tstRSq(k,1), inModel(k,:,1), ...
+                coeff(k,:,1), tStat(k,:,1), coeffRSq(k,:,1) ] = ...
                           fitModel( ...
                                     trnData, tstData, ...
                                     modelDist{i}, modelLink{i}, ...
@@ -172,7 +178,8 @@ for i = 1:nModels
 
                 % fit the model with only amplitude predictors
                 [ trnRSq(k,2), tstRSq(k,2), ...
-                    inModel(k,1:nPW,2), coeff(k,1:nPW,2), tStat(k,1:nPW,2) ] = ...
+                    inModel(k,1:nPW,2), coeff(k,1:nPW,2), ...
+                    tStat(k,1:nPW,2), coeffRSq(k,1:nPW,2) ] = ...
                           fitModel( ...
                                         trnData, tstData, ...
                                         modelDist{i}, modelLink{i}, ...
@@ -184,10 +191,10 @@ for i = 1:nModels
                                        
         
         % average performance across all partitions
-        performance.TrainRSq(m) = mean( trnRSq(:,1) );            
-        performance.TestRSq(m) = mean( tstRSq(:,1) );
-        performance.TrainRSq_NoWarp(m) = mean( trnRSq(:,2) );            
-        performance.TestRSq_NoWarp(m) = mean( tstRSq(:,2) );
+        models.perf.TrainRSq(m) = mean( trnRSq(:,1) );            
+        models.perf.TestRSq(m) = mean( tstRSq(:,1) );
+        models.perf.TrainRSq_NoWarp(m) = mean( trnRSq(:,2) );            
+        models.perf.TestRSq_NoWarp(m) = mean( tstRSq(:,2) );
         
         % count number of variables included
         models.incl( m, 4:nP+3 ) = array2table(sum( inModel(:,:,1) ));
@@ -198,15 +205,17 @@ for i = 1:nModels
         models.coeffW( m, 4:nP+3 ) = array2table(mean(coeff(:,:,2),'omitnan'));
         models.tStat( m, 4:nP+3 ) = array2table(mean(tStat(:,:,1),'omitnan'));
         models.tStatW( m, 4:nP+3 ) = array2table(mean(tStat(:,:,2),'omitnan'));
+        models.coeffRSq( m, 4:nP+3 ) = array2table(mean(coeffRSq(:,:,1),'omitnan'));
+        models.coeffRSqW( m, 4:nP+3 ) = array2table(mean(coeffRSq(:,:,2),'omitnan'));
 
              
         disp(['Model: type = ' modelName{i} ...
           '; vars = ' predSetName{j} ...
-          '; train error = ' num2str(performance.TrainRSq(m)) ...
-          '; test error = ' num2str(performance.TestRSq(m)) ...
+          '; train error = ' num2str(models.perf.TrainRSq(m)) ...
+          '; test error = ' num2str(models.perf.TestRSq(m)) ...
           '; -- No Warp Model: train error = ' ...
-                            num2str(performance.TrainRSq_NoWarp(m)) ...
-          '; test error = ' num2str(performance.TestRSq_NoWarp(m)) ]);
+                            num2str(models.perf.TrainRSq_NoWarp(m)) ...
+          '; test error = ' num2str(models.perf.TestRSq_NoWarp(m)) ]);
         
     end
     
@@ -217,28 +226,26 @@ end
 
 
 
-function [ trnRSq, tstRSq, inModel, coeff, tStat ] = ...
+function [ trnRSq, tstRSq, inModel, coeff, tStat, RSq ] = ...
                                 fitModel( trnData, tstData, ...
                                           distFn, linkFn, ...
                                           doStepwise, setup )
     warning( 'off', 'all' );
     % fit model
     if doStepwise
-        mdl = compact( stepwiseglm( ...
-                         trnData, ...
-                         setup.spec, ...
-                         'Distribution', distFn, ...
-                         'Link', linkFn, ...
-                         'Upper', setup.upper, ...
-                         'Criterion', setup.criterion, ...
-                         'Verbose', 0) );
+        mdl =stepwiseglm( trnData, ...
+                          setup.spec, ...
+                          'Distribution', distFn, ...
+                          'Link', linkFn, ...
+                          'Upper', setup.upper, ...
+                          'Criterion', setup.criterion, ...
+                          'Verbose', 0);
 
     else
-        mdl = compact( fitglm( ...
-                         trnData, ...
-                         setup.spec, ...
-                         'Distribution', distFn, ...
-                         'Link', linkFn ) );
+        mdl = fitglm( trnData, ...
+                      setup.spec, ...
+                      'Distribution', distFn, ...
+                      'Link', linkFn );
 
     end
     warning( 'on', 'all' );
@@ -281,7 +288,16 @@ function [ trnRSq, tstRSq, inModel, coeff, tStat ] = ...
             tStat(i) = NaN;
         end
     end
-            
+    
+    % obtain explained variances
+    RSq = zeros( nCoeff, 1 );
+    for i = 1:nCoeff
+        if inModel(i)
+            mdl1 = removeTerms( mdl, ...
+                            mdl.VariableInfo.Properties.RowNames{i} );
+            RSq(i) = mdl.Rsquared.Ordinary - mdl1.Rsquared.Ordinary;
+        end
+    end
 
 end
 
@@ -305,6 +321,7 @@ isMatch = c==cHat;
 correct = sum( isMatch )/length( y );
 
 end
+
 
 
 function T = setupRecord( T, m, dataset, modelName, predSetName )

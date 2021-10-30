@@ -14,7 +14,7 @@
 % ************************************************************************
 
 
-function [ XFdReg, warpFd, decomp ] = registerVGRF( t, XFd, setup, opt )
+function [ XFdReg, warpFd ] = registerVGRF( t, XFd, setup, opt )
 
 % initialise
 monotonic = true;
@@ -23,11 +23,6 @@ N = size( getcoef( XFd ), 2 );
 
 XFdReg = XFd;
 warpT = repmat( t, N, 1 )';
-
-% plot curves
-%subplot( N+1, 2, 1 );
-%plot( XFdReg );
-%drawnow;
 
 % use a Procustes style loop
 for i = 1:nProcustes
@@ -86,36 +81,8 @@ for i = 1:nProcustes
         warpT(:,j) = max( min( warpT(:,j), t(end) ), t(1) );
     end
     warpFd = smooth_basis( t, warpT, wFdRegPar );
-    
-    % compute amplitude and phase decomposition
-    [ ampVar, phaVar, rSq, c ] = AmpPhaseDecomp( XFd, XFdReg, warpFd );
-
-    disp([ 'Iteration = ' num2str(i) ...
-           '; AmpVar = ' num2str( ampVar ) ...
-           '; PhaVar = ' num2str( phaVar ) ...
-           '; RSq = ' num2str( rSq ) ...
-           '; C = ' num2str( c ) ]);
-    
-    %subplot( N+1, 2, i*2+1 );
-    %plot( XFdReg );
-    %subplot( N+1, 2, i*2+2 );
-    %plot( warpFd );
-    %drawnow;
-    
+        
 end
-
-if ~isempty( lm.mean )
-    % locate landmarks to determine end point
-    lm = findGRFlandmarks( t, XFdReg, setup.lm, opt );
-    disp(['Final Landmark means = ' num2str( lm.mean )]);
-    disp(['Final Landmark SDs   = ' num2str( std( lm.case ) )]);
-end
-    
-    
-decomp.ampVar = ampVar;
-decomp.phaVar = phaVar;
-decomp.rSq = rSq;
-decomp.c = c;
 
 
 end

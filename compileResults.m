@@ -29,6 +29,12 @@ for i = 1:nSets
                 end
             end
             
+            if isstruct( T )
+                T = struct2table( T );
+            elseif islogical( T )
+                T = array2table( T );
+            end
+            
             if istable( T )
                 if isempty( longT )
                     longT = T;

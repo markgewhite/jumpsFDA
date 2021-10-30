@@ -23,7 +23,7 @@ pca.unrotated = pca_fd( XFd, ...
                     
 pca.varimax = varmx_pca( pca.unrotated );
 
-pca.unrotate = compactPCA( pca.unrotated );
+pca.unrotated = compactPCA( pca.unrotated );
 pca.varimax = compactPCA( pca.varimax );
 
 if ~isempty( warpFd )
@@ -50,9 +50,7 @@ function pca = compactPCA( pca )
 
 % strip out fields that are unnecessary in order to save memory
 
-% pca = rmfield( pca, 'harmfd' );
-pca = rmfield( pca, 'values' );
 pca = rmfield( pca, 'fdhatfd' );
-pca = rmfield( pca, 'meanfd' );
+
 
 end

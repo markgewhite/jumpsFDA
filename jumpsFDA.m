@@ -80,6 +80,7 @@ options.reg.doCurvePlots = false; % flag whether to show registration curve plot
 options.reg.doRegHistogram = false; % flag whether to show the spread of landmark points
 options.reg.doRegPlots = false; % flag whether to show registration curve plots
 
+options.reg.doRemoveFaulty = true; % whether to remove faulty registrations
 
 % ************************************************************************
 %   Baseline settings
@@ -104,15 +105,17 @@ setup.Fd.tolerance = 0.001; % performance measure error tolerance
 setup.reg.nIterations = 2; % Procrustes iterations
 setup.reg.nBasis = 10; % numbers of bases for registration
 setup.reg.basisOrder = 3; % time warping basis order for registration
-setup.reg.wLambda = 1E-2; % roughness penalty for time warp
-% *** CHANGE? ***
-setup.reg.XLambda = 1E0; % roughness penalty to prevent wiggles in y
+setup.reg.wLambda = 1E-2; % roughness penalty for time warp 1E-2
+setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
 setup.reg.lm.grfcross = false; % use VGRF crossing point as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
 setup.reg.lm.pwrcross = false; % use Power crossing point as a landmark?
 setup.reg.lm.pwrmax = false; % use Power maximum as a landmark?
+
+setup.reg.faultCriterion = 'RelativeArea'; % after vs before area ratio
+setup.reg.faultZScore = 3.5; % fault threshold
 
 setup.pca.nComp = 15; % number of PCA components to be retained
 setup.pca.nCompWarp = 8; % number of PCA components to be retained
@@ -123,10 +126,10 @@ setup.models.seed = 12345; % random seed for reproducibility
 setup.models.spec = 'linear'; % type of GLM
 setup.models.upper = 'linear'; % linear model without interactions
 setup.models.criterion = 'bic'; % predictor selection criterion
-setup.models.RSqMeritThreshold = 0.8; % merit threshold for stepwise selection
+setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = fullfile(datapath,'jumpsAnalysis2.mat'); % where to save the analysis
-
+setup.filename = fullfile(datapath,'jumpsAnalysis5A.mat'); % where to save the analysis
+setup.filename2 = fullfile(datapath,'jumpsAnalysis5A.mat'); % where to save the analysis
 
 
 % ************************************************************************
@@ -245,25 +248,21 @@ vgrfFd = cell( nSets, nStd, nProc );
 warpFd = cell( nSets, nStd, nProc );
 fdPar = cell( nSets, nStd );
 decomp = cell( nSets, nStd, nProc );
+faulty = cell( nSets, nStd, nProc );
 name = strings( nSets, nStd, nProc );
 
 vgrfPCA = cell( nSets, nStd, nProc );
 vgrfACP = cell( nSets, nStd, nProc );
 
-
-
 results = cell( nSets, nStd, nProc );
 models = cell( nSets, nStd, nProc );
-performance = cell( nSets, nStd, nProc );
 
 load( setup.filename );
-
-
 
 % set random seed for reproducibility
 rng( setup.models.seed );
 
-for i = 1:nSets
+for i = 1:2 % 1:nSets
     
     % setup partitioning for all models using this data set   
     partitions = kFoldSubjectCV(  refSet{i}(:,1), ...
@@ -295,6 +294,13 @@ for i = 1:nSets
        
        for k = 1:nProc
            
+           % setup reference data in case rows have to be removed
+           ref = refSet{i};
+           type = typeSet{i};
+           jperf = perf{i};
+           part = partitions;
+           
+           
            if k > 1
                % processing includes regression
                
@@ -308,17 +314,60 @@ for i = 1:nSets
 
                % register the curves
                if isempty( vgrfFd{i,j,k} ) ...
-                       || isempty( warpFd{i,j,k} ) ...
-                       || isempty( decomp{i,j,k} )
+                       || isempty( warpFd{i,j,k} ) 
                    
-                    [ vgrfFd{i,j,k}, warpFd{i,j,k}, decomp{i,j,k} ] = ...
+                   [ vgrfFd{i,j,k}, warpFd{i,j,k} ] = ...
                                   registerVGRF( tSpan{i,j}, ...
                                                 vgrfFd{i,j,1}, ...
                                                 setup.reg, ...
                                                 options.reg );
-               
+                                                           
+                   % remove outliers (faulty registrations)
+                   if options.reg.doRemoveFaulty ...
+                           && ~isempty( vgrfFd{i,j,k} ) ...
+                           && ~isempty( warpFd{i,j,k} )
+
+                       disp([  ' i = ' num2str(i) ...
+                              '; j = ' num2str(j) ...
+                              '; k = ' num2str(k) ]);
+
+                       regDecomp( vgrfFd{i,j,1}, ...
+                                                  vgrfFd{i,j,k}, ...
+                                                  warpFd{i,j,k} );
+
+                       [ unregFd, vgrfFd{i,j,k}, warpFd{i,j,k}, ...
+                            faulty{i,j,k} ] = ...
+                                        removeFaultyFd( vgrfFd{i,j,1}, ...
+                                                        vgrfFd{i,j,k}, ...
+                                                        warpFd{i,j,k}, ...
+                                                        setup.reg );
+
+                   else
+                       unregFd = vgrfFd{i,j,1};
+                   end                  
+
+                   % obtain decomposition, if needed
+                   if isempty( decomp{i,j,k} )
+                       decomp{i,j,k} = regDecomp( unregFd, ...
+                                                  vgrfFd{i,j,k}, ...
+                                                  warpFd{i,j,k} );
+                   end
+
                end
-                                                                      
+                
+           end
+           
+           if options.reg.doRemoveFaulty ...
+                && islogical( faulty{i,j,k} )
+            
+               % remove rows if needed
+               ref = ref( ~faulty{i,j,k}, : );
+               type = type( ~faulty{i,j,k} );
+               jperf.JHtov = jperf.JHtov( ~faulty{i,j,k} );
+               jperf.JHwd = jperf.JHwd( ~faulty{i,j,k} );
+               jperf.PP = jperf.PP( ~faulty{i,j,k} );
+               part = part( ~faulty{i,j,k}, : );
+               
            end
            
            if isempty( vgrfPCA{i,j,k} )
@@ -340,36 +389,34 @@ for i = 1:nSets
                                          warpFd{i,j,k}, ...
                                          vgrfPCA{i,j,k} );
                              
-           end
-           
-           % store data
-           %save( setup.filename, ...
-           %             'vgrfFd', 'warpFd', 'decomp', 'name', 'fdPar', ...
-           %             'vgrfPCA', 'vgrfACP' );
-                    
-                    
+           end                      
                                         
            % generate output tables
            if isempty( results{i,j,k} ) 
                     results{i,j,k} = outputTable( name{i,j,k}, ...
-                                        refSet{i}, ...
-                                        typeSet{i}, ...
-                                        perf{i}, ...
+                                        ref, ...
+                                        type, ...
+                                        jperf, ...
                                         vgrfPCA{i,j,k}, ...
                                         vgrfACP{i,j,k}, ...
                                         setup );
            end
                                     
            % fit models to the data
-           models{i,j,k} = fitVGRFModels( ...
+           %if isempty( models{i,j,k} )
+               models{i,j,k} = fitVGRFModels( ...
                                     results{i,j,k}, ...
-                                    partitions, setup, ...
+                                    part, setup, ...
                                     models{i,j,k} );
-                                                  
-                                       
+           %end
+                                                                        
                                         
        end
        
+       % store data
+       save( setup.filename2, ...
+              'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+             'faulty', 'vgrfPCA', 'vgrfACP', 'models', 'results' );   
        
     end
     
@@ -380,19 +427,19 @@ end
 %   Compile and save the results table
 % ************************************************************************
 
-save( setup.filename, ...
-      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-      'vgrfPCA', 'vgrfACP', ...
-      'models' );
 
 longResults = compileResults( results );
-longPerformance = compileResults( performance );
+longPerformance = compileResults( models, 'perf' );
 longInclude = compileResults( models, 'incl' );
 longCoeff = compileResults( models, 'coeff' );
 longTStat = compileResults( models, 'tStat' );
+longCoeffRSq = compileResults( models, 'coeffRSq' );
 longIncludeW = compileResults( models, 'inclW' );
 longCoeffW = compileResults( models, 'coeffW' );
 longTStatW = compileResults( models, 'tStatW' );
+longDecomp = compileResults( decomp );
+faultyCountWOA = squeeze(cellfun( @sum, faulty(2,:,:) ))';
+faultyCountALL = squeeze(cellfun( @sum, faulty(1,:,:) ))';
 
 
    
