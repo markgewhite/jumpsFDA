@@ -40,21 +40,13 @@ load(fullfile(datapath,'compactjumpdata.mat'));
 
 g = 9.812; % acceleration due to gravity
 
-% tLength = 10000; % (5000) duration in milliseconds %%%% FILTER %%%% 
 tFreq = 1; % sampling frequency
 
-nSets = 3; % number of data sets (1 = All; 2 = CMJ(NA); 3 = CMJ(A))
+nSets = 2; % number of data sets (1 = CMJ(No arms); 2 = CMJ(All))
 nStd = 2; % number of methods to standardise length
-nModels = 5; % number of models
-nProc = (2^4-1)+2; % number of curves processes
-
-% presets based on approx 1E-3 mean GCV error
-%preset.nBasis = [ 670 140; 530 135; 660 150 ];
-%preset.lambda = [ 1E2 1E2; 1E2 1E2; 1E2 1E2 ];
-
-% presets based on minimising GCV error
-%preset.nBasis = [ 1180 350; 1180 335; 950 375 ];
-%preset.lambda = [ 1E0 1E0; 1E0 1E0; 1E0 1E0 ];
+nModels = 4; % number of models
+nLMReg = 16; % number of landmark registration combinations including none
+nCTReg = 2; % number of continuous registrations (applied or none)
 
 % presets based on not exceed jump performance error threshold
 preset.nBasis = [ 190 80; 190 80; 190 80 ];
@@ -65,7 +57,6 @@ preset.lambda = [ 1E3 1E3; 1E3 1E3; 1E3 1E3 ];
 % ************************************************************************
 
 options.test = 'None'; % type of test to perform
-
 
 options.doFiltering = false; % whether to do low-pass filtering on the GRF data
 options.doInitialFit = false; % whether to fit with max flexibility first
@@ -109,7 +100,6 @@ setup.reg.wLambda = 1E-2; % roughness penalty for time warp 1E-2
 setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
-setup.reg.lm.grfcross = false; % use VGRF crossing point as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
 setup.reg.lm.pwrcross = false; % use Power crossing point as a landmark?
 setup.reg.lm.pwrmax = false; % use Power maximum as a landmark?
@@ -118,7 +108,7 @@ setup.reg.faultCriterion = 'RelativeArea'; % after vs before area ratio
 setup.reg.faultZScore = 3.5; % fault threshold
 
 setup.pca.nComp = 15; % number of PCA components to be retained
-setup.pca.nCompWarp = 8; % number of PCA components to be retained
+setup.pca.nCompWarp = 5; % number of PCA components to be retained
 
 setup.models.nRepeats = 2; % number of repetitions of CV
 setup.models.nFolds = 5; % number of CV folds for each repetition
@@ -128,8 +118,8 @@ setup.models.upper = 'linear'; % linear model without interactions
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = fullfile(datapath,'jumpsAnalysis5A.mat'); % where to save the analysis
-setup.filename2 = fullfile(datapath,'jumpsAnalysis5A.mat'); % where to save the analysis
+setup.filename = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
+setup.filename2 = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
 
 
 % ************************************************************************
@@ -165,15 +155,7 @@ for i = 1:nSets
     rawData{i} = padData( rawData{i}, ...
                            maxLen, ...
                            setup.data.initial );
-
-    % filter data
-    if options.doFiltering
-        rawData{i} = filterVGRF( rawData{i}, ...
-                                    setup.data.sampleFreq, ...
-                                    setup.data.cutoffFreq, ...
-                                    setup.data.padding );
-    end
-                       
+              
 end 
 
 
@@ -244,20 +226,20 @@ end
 %   Begin functional data analysis
 % ************************************************************************
 
-vgrfFd = cell( nSets, nStd, nProc );
-warpFd = cell( nSets, nStd, nProc );
+vgrfFd = cell( nSets, nStd, nLMReg, nCTReg );
+warpFd = cell( nSets, nStd, nLMReg, nCTReg );
 fdPar = cell( nSets, nStd );
-decomp = cell( nSets, nStd, nProc );
-faulty = cell( nSets, nStd, nProc );
-name = strings( nSets, nStd, nProc );
+decomp = cell( nSets, nStd, nLMReg, nCTReg );
+isValid = cell( nSets, nStd, nLMReg );
+name = strings( nSets, nStd, nLMReg, nCTReg );
 
-vgrfPCA = cell( nSets, nStd, nProc );
-vgrfACP = cell( nSets, nStd, nProc );
+vgrfPCA = cell( nSets, nStd, nLMReg, nCTReg );
+vgrfACP = cell( nSets, nStd, nLMReg, nCTReg );
 
-results = cell( nSets, nStd, nProc );
-models = cell( nSets, nStd, nProc );
+results = cell( nSets, nStd, nLMReg, nCTReg );
+models = cell( nSets, nStd, nLMReg, nCTReg );
 
-load( setup.filename );
+% load( setup.filename );
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -277,146 +259,126 @@ for i = 1:2 % 1:nSets
        fdSetup.lambda = preset.lambda(i,j);
 
        % generate the smooth curves
-       if isempty( vgrfFd{i,j,1} ) || isempty( fdPar{i,j} )
-           [ vgrfFd{i,j,1}, fdPar{i,j} ] = smoothVGRF(  ...
+       if isempty( vgrfFd{i,j,1,1} ) || isempty( fdPar{i,j} )
+           [ vgrfFd{i,j,1,1}, fdPar{i,j} ] = smoothVGRF(  ...
                                                 vgrfData{i,j}, ...
                                                 tSpan{i,j}, ...
                                                 fdSetup, ...
                                                 options );
-           name{i,j,1} = [ num2str(i) '-' num2str(j) 'VGRF----' ];
-       end
-             
-       % compute jump performances from the padded curves
-       %if j == 1
-       %     perf{i} = jumpperf_fd( vgrfFd{i,j,1} );
-       %end
+       end      
        
-       
-       for k = 1:nProc
+       for k = 1:nLMReg
            
-           % setup reference data in case rows have to be removed
-           ref = refSet{i};
-           type = typeSet{i};
-           jperf = perf{i};
-           part = partitions;
-           
-           
-           if k > 1
-               % processing includes regression
+           for l = 1:nCTReg
                
-               % select landmarks to find
-               kbin = dec2bin( k-2, 4 );
-               setup.reg.lm.grfmin = (kbin(1)=='1');
-               setup.reg.lm.pwrmin = (kbin(2)=='1');
-               setup.reg.lm.pwrcross = (kbin(3)=='1');
-               setup.reg.lm.pwrmax = (kbin(4)=='1');
-               name{i,j,k} = [ num2str(i) '-' num2str(j) 'VGRF' kbin ];
-
-               % register the curves
-               if isempty( vgrfFd{i,j,k} ) ...
-                       || isempty( warpFd{i,j,k} ) 
-                   
-                   [ vgrfFd{i,j,k}, warpFd{i,j,k} ] = ...
-                                  registerVGRF( tSpan{i,j}, ...
-                                                vgrfFd{i,j,1}, ...
-                                                setup.reg, ...
-                                                options.reg );
-                                                           
-                   % remove outliers (faulty registrations)
-                   if options.reg.doRemoveFaulty ...
-                           && ~isempty( vgrfFd{i,j,k} ) ...
-                           && ~isempty( warpFd{i,j,k} )
-
-                       disp([  ' i = ' num2str(i) ...
-                              '; j = ' num2str(j) ...
-                              '; k = ' num2str(k) ]);
-
-                       regDecomp( vgrfFd{i,j,1}, ...
-                                                  vgrfFd{i,j,k}, ...
-                                                  warpFd{i,j,k} );
-
-                       [ unregFd, vgrfFd{i,j,k}, warpFd{i,j,k}, ...
-                            faulty{i,j,k} ] = ...
-                                        removeFaultyFd( vgrfFd{i,j,1}, ...
-                                                        vgrfFd{i,j,k}, ...
-                                                        warpFd{i,j,k}, ...
-                                                        setup.reg );
-
-                   else
-                       unregFd = vgrfFd{i,j,1};
-                   end                  
-
-                   % obtain decomposition, if needed
-                   if isempty( decomp{i,j,k} )
-                       decomp{i,j,k} = regDecomp( unregFd, ...
-                                                  vgrfFd{i,j,k}, ...
-                                                  warpFd{i,j,k} );
+               % setup reference data in case rows have to be removed
+               ref = refSet{i};
+               type = typeSet{i};
+               jperf = perf{i};
+               part = partitions;
+               
+               % encode the processing procedure
+               [ name{i,j,k,l}, setup.reg.lm ] = encodeProc( i, j, k, l );
+               
+               if l == 1 % first 'l' loop
+                   if k > 1 && isempty( vgrfFd{i,j,k,l} )
+                       % landmark registration required
+                       % applied to unregistered curves
+                       [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l} ] = ...
+                           registerVGRF( tSpan, ...
+                                         vgrfFd{i,j,1,1}, ...
+                                         'Landmark', ...
+                                         setup.reg );
+                                     
+                       % check for any faulty registrations
+                       v = validateFd( vgrfFd{i,j,1,1}, ...
+                                       vgrfFd{i,j,k,l}, ...
+                                       warpFd{i,j,k,l}, ...
+                                       setup.reg );
+                       
+                       % remove faulty registrations
+                       vgrfFd{i,j,k,l} = selectFd( vgrfFd{i,j,k,l}, v );
+                       warpFd{i,j,k,l} = selectFd( warpFd{i,j,k,l}, v );
+                       ref = ref( v, : );
+                       type = type( v );
+                       jperf.JHtov = jperf.JHtov( v );
+                       jperf.JHwd = jperf.JHwd( v );
+                       jperf.PP = jperf.PP( v );
+                       part = part( v, : );
+                       isValid{i,j,k} = v;
+                                     
                    end
+                   
+               else % second 'l' loop
+                   if isempty( vgrfFd{i,j,k,l} )
+                       % continuous registration required
+                       % applied to prior-registered curves
+                       [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l} ] = ...
+                          registerVGRF( tSpan, ...
+                                        vgrfFd{i,j,k,1}, ...
+                                        'Continuous', ...
+                                        setup.reg, ...
+                                        warpFd{i,j,k,1} );
+                   end
+               end
+                   
+               if k > 1 || l == 2
+                   % perform a decomposition analysis
+                   decomp{i,j,k,l} = regDecomp( ...
+                                       selectFd( vgrfFd{i,j,1,1}, v ), ...
+                                       vgrfFd{i,j,k,l}, ...
+                                       warpFd{i,j,k,l} );
+               end
+               
+               if isempty( vgrfPCA{i,j,k,l} )
+
+                   % run principal component analsyis
+                   vgrfPCA{i,j,k,l} = pcaVGRF( vgrfFd{i,j,k,l}, ...
+                                              fdPar{i,j}, ...
+                                              warpFd{i,j,k,l}, ...
+                                              setup.pca.nComp, ...
+                                              setup.pca.nCompWarp );
 
                end
-                
-           end
-           
-           if options.reg.doRemoveFaulty ...
-                && islogical( faulty{i,j,k} )
-            
-               % remove rows if needed
-               ref = ref( ~faulty{i,j,k}, : );
-               type = type( ~faulty{i,j,k} );
-               jperf.JHtov = jperf.JHtov( ~faulty{i,j,k} );
-               jperf.JHwd = jperf.JHwd( ~faulty{i,j,k} );
-               jperf.PP = jperf.PP( ~faulty{i,j,k} );
-               part = part( ~faulty{i,j,k}, : );
+
+               if isempty( vgrfACP{i,j,k,l} )
+
+                   % run analysis of characterising phases
+                   vgrfACP{i,j,k,l} = acpVGRF( tSpan{i,j}, ...
+                                             vgrfFd{i,j,k,l}, ...
+                                             warpFd{i,j,k,l}, ...
+                                             vgrfPCA{i,j,k,l} );
+
+               end                      
+
+               % generate output tables
+               if isempty( results{i,j,k,l} ) 
+                    results{i,j,k,l} = outputTable( name{i,j,k,l}, ...
+                                            ref, ...
+                                            type, ...
+                                            jperf, ...
+                                            vgrfPCA{i,j,k,l}, ...
+                                            vgrfACP{i,j,k,l}, ...
+                                            setup );
+               end
+
+               % fit models to the data
+               if isempty( models{i,j,k,l} )
+                   models{i,j,k,l} = fitVGRFModels( ...
+                                        results{i,j,k,l}, ...
+                                        part, setup, ...
+                                        models{i,j,k,l} );
+               end
                
+               % store data
+               save( setup.filename2, ...
+                      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+                     'faulty', 'vgrfPCA', 'vgrfACP', 'models', 'results' ); 
+         
            end
-           
-           if isempty( vgrfPCA{i,j,k} )
-                                
-               % run principal component analsyis
-               vgrfPCA{i,j,k} = pcaVGRF( vgrfFd{i,j,k}, ...
-                                          fdPar{i,j}, ...
-                                          warpFd{i,j,k}, ...
-                                          setup.pca.nComp, ...
-                                          setup.pca.nCompWarp );
-                 
-           end
-           
-           if isempty( vgrfACP{i,j,k} )
-               
-               % run analysis of characterising phases
-               vgrfACP{i,j,k} = acpVGRF( tSpan{i,j}, ...
-                                         vgrfFd{i,j,k}, ...
-                                         warpFd{i,j,k}, ...
-                                         vgrfPCA{i,j,k} );
-                             
-           end                      
-                                        
-           % generate output tables
-           if isempty( results{i,j,k} ) 
-                    results{i,j,k} = outputTable( name{i,j,k}, ...
-                                        ref, ...
-                                        type, ...
-                                        jperf, ...
-                                        vgrfPCA{i,j,k}, ...
-                                        vgrfACP{i,j,k}, ...
-                                        setup );
-           end
-                                    
-           % fit models to the data
-           %if isempty( models{i,j,k} )
-               models{i,j,k} = fitVGRFModels( ...
-                                    results{i,j,k}, ...
-                                    part, setup, ...
-                                    models{i,j,k} );
-           %end
-                                                                        
-                                        
        end
        
-       % store data
-       save( setup.filename2, ...
-              'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-             'faulty', 'vgrfPCA', 'vgrfACP', 'models', 'results' );   
+  
        
     end
     

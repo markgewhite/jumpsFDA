@@ -72,8 +72,8 @@ typErr = typErr(1:k);
 disp(['Typical VGRF Error = ' num2str(mean(typErr)) ' BW']);
 
 % combine all datasets together
-curveSet = { vgrfData, vgrfData(~withArms), vgrfData(withArms) };
-IDSet = { vgrfRef, vgrfRef(~withArms,:), vgrfRef(withArms,:) };
-typeSet = { withArms, false(length(IDSet{2}),1), true(length(IDSet{3}),1) };
+curveSet = { vgrfData(~withArms), vgrfData };
+IDSet = { vgrfRef(~withArms,:), vgrfRef };
+typeSet = { false(length(IDSet{1}),1), withArms };
 
 end

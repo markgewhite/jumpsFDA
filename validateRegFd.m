@@ -1,7 +1,6 @@
 % ************************************************************************
-% Function: removeFaultyFd
-% Purpose:  Remove extreme smoothed curves arising (it is assumed)
-%           a faulty registration. They are identified by there being
+% Function: validateRegFd
+% Purpose:  Identify faulty registered curves based on there being
 %           an unreasonably large change in the area under the curve
 %
 % Parameters:
@@ -15,8 +14,7 @@
 % ************************************************************************
 
 
-function [ XFdTrim, XFdRegTrim, warpFdTrim, faulty ] = ...
-                        removeFaultyFd( XFd, XFdReg, warpFd, setup )
+function isValid = validateRegFd( XFd, XFdReg, warpFd, setup )
 
 % create a fine basis for integration
 XBasis = getbasis( XFd );
@@ -43,37 +41,16 @@ XZscore = abs(AR - mean(AR))/std(AR);
 WZscore = abs(DWarpA-mean(DWarpA))/std(DWarpA);
 W2Zscore = abs(D2WarpA-mean(D2WarpA))/std(D2WarpA);
 
-figure(1);
-plot( WZscore );
-hold on;
-plot( W2Zscore );
-plot( XZscore );
-hold off;
-
 switch setup.faultCriterion
     case 'Warp'
-        faulty = WZscore > setup.faultZScore ...
+        isValid = WZscore < setup.faultZScore ...
                             | W2Zscore > setup.faultZScore;
     case 'RelativeArea'
-        faulty = XZscore > setup.faultZScore;
+        isValid = XZscore < setup.faultZScore;
     otherwise
         error('Unrecognised fault criterion.');
 end
 
-
-% carry out removal using the coefficient matrix
-coeff = getcoef( XFd );
-coeff(:,faulty) = [];
-XFdTrim = putcoef( XFd, coeff );
-
-coeff = getcoef( XFdReg );
-coeff(:,faulty) = [];
-XFdRegTrim = putcoef( XFdReg, coeff );
-
-coeff = getcoef( warpFd );
-coeff(:,faulty) = [];
-warpFdTrim = putcoef( warpFd, coeff );
-
-disp(['Faulty registrations = ' num2str( sum(faulty) )]);
+disp(['Faulty registrations = ' num2str( sum(isValid) )]);
 
 end
