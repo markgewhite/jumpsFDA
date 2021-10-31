@@ -116,7 +116,7 @@ setup.models.seed = 12345; % random seed for reproducibility
 setup.models.spec = 'linear'; % type of GLM
 setup.models.upper = 'linear'; % linear model without interactions
 setup.models.criterion = 'bic'; % predictor selection criterion
-setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
+setup.models.RSqMeritThreshold = 0.0; % merit threshold for stepwise selection
 
 setup.filename = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
 setup.filename2 = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
@@ -244,7 +244,7 @@ models = cell( nSets, nStd, nLMReg, nCTReg );
 % set random seed for reproducibility
 rng( setup.models.seed );
 
-for i = 1:2 % 1:nSets
+for i = 1:nSets
     
     % setup partitioning for all models using this data set   
     partitions = kFoldSubjectCV(  refSet{i}(:,1), ...
@@ -268,33 +268,44 @@ for i = 1:2 % 1:nSets
        end      
        
        for k = 1:nLMReg
-           
-           for l = 1:nCTReg
-               
+
+           if isempty( isValid{i,j,k} )
                % setup reference data in case rows have to be removed
                ref = refSet{i};
                type = typeSet{i};
                jperf = perf{i};
                part = partitions;
+           else
+               % setup reference data based on previous validation
+               ref = refSet{i}( isValid{i,j,k}, : );
+               type = typeSet{i}( isValid{i,j,k}, : );
+               jperf.JHtov = perf{i}.JHtov( isValid{i,j,k} );
+               jperf.JHwd = perf{i}.JHwd( isValid{i,j,k} );
+               jperf.PP = perf{i}.PP( isValid{i,j,k} );
+               part = partitions( isValid{i,j,k}, : );
+           end
+           
+           for l = 1:nCTReg
                
                % encode the processing procedure
                [ name{i,j,k,l}, setup.reg.lm ] = encodeProc( i, j, k, l );
+               disp(['*************** ' name{i,j,k,l} ' ***************']);
                
                if l == 1 % first 'l' loop
                    if k > 1 && isempty( vgrfFd{i,j,k,l} )
                        % landmark registration required
                        % applied to unregistered curves
                        [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l} ] = ...
-                           registerVGRF( tSpan, ...
+                           registerVGRF( tSpan{i,j}, ...
                                          vgrfFd{i,j,1,1}, ...
                                          'Landmark', ...
                                          setup.reg );
                                      
                        % check for any faulty registrations
-                       v = validateFd( vgrfFd{i,j,1,1}, ...
-                                       vgrfFd{i,j,k,l}, ...
-                                       warpFd{i,j,k,l}, ...
-                                       setup.reg );
+                       v = validateRegFd(  vgrfFd{i,j,1,1}, ...
+                                           vgrfFd{i,j,k,l}, ...
+                                           warpFd{i,j,k,l}, ...
+                                           setup.reg );
                        
                        % remove faulty registrations
                        vgrfFd{i,j,k,l} = selectFd( vgrfFd{i,j,k,l}, v );
@@ -314,7 +325,7 @@ for i = 1:2 % 1:nSets
                        % continuous registration required
                        % applied to prior-registered curves
                        [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l} ] = ...
-                          registerVGRF( tSpan, ...
+                          registerVGRF( tSpan{i,j}, ...
                                         vgrfFd{i,j,k,1}, ...
                                         'Continuous', ...
                                         setup.reg, ...
@@ -325,9 +336,9 @@ for i = 1:2 % 1:nSets
                if k > 1 || l == 2
                    % perform a decomposition analysis
                    decomp{i,j,k,l} = regDecomp( ...
-                                       selectFd( vgrfFd{i,j,1,1}, v ), ...
-                                       vgrfFd{i,j,k,l}, ...
-                                       warpFd{i,j,k,l} );
+                           selectFd( vgrfFd{i,j,1,1}, isValid{i,j,k} ), ...
+                           vgrfFd{i,j,k,l}, ...
+                           warpFd{i,j,k,l} );
                end
                
                if isempty( vgrfPCA{i,j,k,l} )
@@ -363,17 +374,17 @@ for i = 1:2 % 1:nSets
                end
 
                % fit models to the data
-               if isempty( models{i,j,k,l} )
+               %if isempty( models{i,j,k,l} )
                    models{i,j,k,l} = fitVGRFModels( ...
                                         results{i,j,k,l}, ...
                                         part, setup, ...
                                         models{i,j,k,l} );
-               end
+               %end
                
                % store data
                save( setup.filename2, ...
-                      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-                     'faulty', 'vgrfPCA', 'vgrfACP', 'models', 'results' ); 
+                     'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+                     'isValid', 'vgrfPCA', 'vgrfACP', 'models', 'results' ); 
          
            end
        end
@@ -393,15 +404,11 @@ end
 longResults = compileResults( results );
 longPerformance = compileResults( models, 'perf' );
 longInclude = compileResults( models, 'incl' );
-longCoeff = compileResults( models, 'coeff' );
 longTStat = compileResults( models, 'tStat' );
 longCoeffRSq = compileResults( models, 'coeffRSq' );
-longIncludeW = compileResults( models, 'inclW' );
-longCoeffW = compileResults( models, 'coeffW' );
-longTStatW = compileResults( models, 'tStatW' );
 longDecomp = compileResults( decomp );
-faultyCountWOA = squeeze(cellfun( @sum, faulty(2,:,:) ))';
-faultyCountALL = squeeze(cellfun( @sum, faulty(1,:,:) ))';
+faultyCountWOA = squeeze(cellfun( @sum, isValid(1,:,:) ))';
+faultyCountALL = squeeze(cellfun( @sum, isValid(2,:,:) ))';
 
 
    

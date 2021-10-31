@@ -30,6 +30,7 @@ subjectRefID = 1; % identifier for subject ID index in ref
 jumpRefID = 2; % identifier for jump ID in ref
 
 nSubjects = length( sDataID );
+% nSubjects = 10;
 
 nTotal = sum( nJumpsPerSubject );
 

@@ -24,32 +24,41 @@ nPred = setup.pca.nComp + setup.pca.nCompWarp;
 dataset = results.Dataset(1,:);
 
 % find out if the data set has two arm conditions 
-doClassifiers = length(unique( results.Arms ))==2;
+classifier = length(unique( results.Arms ))==2;
 
 % define models
-nModels = 3 + doClassifiers;
 modelName = { 'JHtov', 'JHwd', 'PP', 'jumpType' };
 modelDist = { 'normal', 'normal', 'normal', 'binomial' };
 modelLink = { 'identity', 'identity', 'identity', 'logit' };
 outcomeIdx = [ 5, 6, 7, 4 ];
+if classifier
+    chosenModels = 4;
+else
+    chosenModels = [ 1 2 3 ];
+end
+nModels = length( chosenModels );
+    
 
 % define predictor subsets
-Pred1st = 8;
-nPredSets = 4;
+pred1st = 8;
 predSetName = { 'PCAU', 'PCAV', 'ACPU', 'ACPV' };
-predIdxSet{1} = Pred1st : Pred1st+nPred-1;
-predIdxSet{2} = Pred1st+nPred : Pred1st+2*nPred-1;
-predIdxSet{3} = Pred1st+2*nPred : Pred1st+3*nPred-1;
-predIdxSet{4} = Pred1st+3*nPred : Pred1st+4*nPred-1;
+predIdxSet{1} = pred1st : pred1st+nPred-1;
+predIdxSet{2} = pred1st+nPred : pred1st+2*nPred-1;
+predIdxSet{3} = pred1st+2*nPred : pred1st+3*nPred-1;
+predIdxSet{4} = pred1st+3*nPred : pred1st+4*nPred-1;
+chosenPredSets = [ 1 4 ]; % only unrotated PCA and varimax ACP
+nPredSets = length( chosenPredSets );
 
 if isempty( models )       
 
     % define model performance table
     varNames = { 'Dataset', 'Model', 'PredictorSet', ...
                     'TrainRSq', 'TrainRSq_NoWarp', ...
-                    'TestRSq', 'TestRSq_NoWarp' };
-    varTypes = { 'string', 'string', 'string', ...
-                    'double', 'double', 'double', 'double' };
+                    'TestRSq', 'TestRSq_NoWarp', ...
+                    'TestRMSE', 'TestAccuracy', ...
+                    'TestSensitivity' , 'TestSpecificity' };
+    varTypes = [repmat( {'string'}, 1, 3) ...
+                 repmat( {'double'}, 1, 8) ];
     models.perf = table( ...
                 'Size', [ nModels*nPredSets length(varNames) ], ...
                 'VariableNames', varNames, ...
@@ -64,13 +73,9 @@ if isempty( models )
                 'Size', [ nModels*nPredSets length(varNames) ], ...
                 'VariableNames', varNames, ...
                 'VariableTypes', varTypes );
-    models.inclW = models.incl;
     models.coeff = models.incl;
-    models.coeffW = models.incl;     
     models.tStat = models.incl; 
-    models.tStatW = models.incl;
     models.coeffRSq = models.incl;
-    models.coeffRSqW = models.incl;
 
     newFit = true;
     
@@ -82,18 +87,12 @@ end
 
 
 
-m = 12; %%%%% TEMP
-for i = 4 % 1:nModels
+m = 0;
+for i = chosenModels
 
-    for j = [1 4 ] % 1:nPredSets
+    for j = chosenPredSets
         
-        %m = m + 1;
-        % TEMPORARY
-        if j==1
-            m = m + 1;
-        else
-            m = m + 3;
-        end
+        m = m + 1;
         
         if newFit 
             % carry out model fitting without stepwise selection
@@ -117,19 +116,9 @@ for i = 4 % 1:nModels
                                 dataset, modelName{i}, predSetName{j} );
             models.incl = setupRecord( models.incl, m, ...
                                 dataset, modelName{i}, predSetName{j} );
-            models.inclW = setupRecord( models.inclW, m, ...
-                                dataset, modelName{i}, predSetName{j} );
-            models.coeff = setupRecord( models.coeff, m, ...
-                                dataset, modelName{i}, predSetName{j} );
-            models.coeffW = setupRecord( models.coeffW, m, ...
-                                dataset, modelName{i}, predSetName{j} );
             models.tStat = setupRecord( models.tStat, m, ...
                                 dataset, modelName{i}, predSetName{j} );
-            models.tStatW = setupRecord( models.tStatW, m, ...
-                                dataset, modelName{i}, predSetName{j} );
             models.coeffRSq = setupRecord( models.coeffRSq, m, ...
-                                dataset, modelName{i}, predSetName{j} );
-            models.coeffRSqW = setupRecord( models.coeffRSqW, m, ...
                                 dataset, modelName{i}, predSetName{j} );
         end
             
@@ -148,10 +137,14 @@ for i = 4 % 1:nModels
         nP = length( predIdxAll );
         trnRSq = zeros( nPartitions, 2 );
         tstRSq = zeros( nPartitions, 2 );
-        inModel = false( nPartitions, nP, 2 );
-        coeff = zeros( nPartitions, nP, 2 );
-        tStat = zeros( nPartitions, nP, 2 );
-        coeffRSq = zeros( nPartitions, nP, 2 );
+        inModel = false( nPartitions, nP );
+        tStat = zeros( nPartitions, nP );
+        coeffRSq = zeros( nPartitions, nP );
+        tstRMSE = zeros( nPartitions, 1 );
+        tstAcc = zeros( nPartitions, 1 );
+        tstSen = zeros( nPartitions, 1 );
+        tstSpc = zeros( nPartitions, 1 );
+
         
         for k = 1:nPartitions          
       
@@ -162,12 +155,14 @@ for i = 4 % 1:nModels
                                 [ predIdxAll outcomeIdx(i) ] );
     
             % fit the full model with all predictors
-            [ trnRSq(k,1), tstRSq(k,1), inModel(k,:,1), ...
-                coeff(k,:,1), tStat(k,:,1), coeffRSq(k,:,1) ] = ...
+            [ trnRSq(k,1), tstRSq(k,1), ...
+                inModel(k,:), tStat(k,:), coeffRSq(k,:), ...
+                tstRMSE(k), tstAcc(k), tstSen(k), tstSpc(k)] = ...
                           fitModel( ...
                                     trnData, tstData, ...
                                     modelDist{i}, modelLink{i}, ...
                                     doStepwise, setup.models );
+
             
             if ~noWarpPred
                 % create the revised data sets without warp predictors
@@ -177,10 +172,8 @@ for i = 4 % 1:nModels
                                     [ predIdxAmpl outcomeIdx(i) ] );
 
                 % fit the model with only amplitude predictors
-                [ trnRSq(k,2), tstRSq(k,2), ...
-                    inModel(k,1:nPW,2), coeff(k,1:nPW,2), ...
-                    tStat(k,1:nPW,2), coeffRSq(k,1:nPW,2) ] = ...
-                          fitModel( ...
+                [ trnRSq(k,2), tstRSq(k,2) ] = ...
+                                fitModel( ...
                                         trnData, tstData, ...
                                         modelDist{i}, modelLink{i}, ...
                                         doStepwise, setup.models );
@@ -196,26 +189,26 @@ for i = 4 % 1:nModels
         models.perf.TrainRSq_NoWarp(m) = mean( trnRSq(:,2) );            
         models.perf.TestRSq_NoWarp(m) = mean( tstRSq(:,2) );
         
+        models.perf.TestRMSE(m) = mean( tstRMSE );
+        models.perf.TestAccuracy(m) = mean( tstAcc );
+        models.perf.TestSensitivity(m) = mean( tstSen );
+        models.perf.TestSpecificity(m) = mean( tstSpc );
+        
         % count number of variables included
-        models.incl( m, 4:nP+3 ) = array2table(sum( inModel(:,:,1) ));
-        models.inclW( m, 4:nP+3 ) = array2table(sum( inModel(:,:,2) ));
+        models.incl( m, 4:nP+3 ) = array2table(sum( inModel ));
         
         % average coefficients that were included
-        models.coeff( m, 4:nP+3 ) = array2table(mean(coeff(:,:,1),'omitnan'));
-        models.coeffW( m, 4:nP+3 ) = array2table(mean(coeff(:,:,2),'omitnan'));
-        models.tStat( m, 4:nP+3 ) = array2table(mean(tStat(:,:,1),'omitnan'));
-        models.tStatW( m, 4:nP+3 ) = array2table(mean(tStat(:,:,2),'omitnan'));
-        models.coeffRSq( m, 4:nP+3 ) = array2table(mean(coeffRSq(:,:,1),'omitnan'));
-        models.coeffRSqW( m, 4:nP+3 ) = array2table(mean(coeffRSq(:,:,2),'omitnan'));
+        models.tStat( m, 4:nP+3 ) = array2table(mean(tStat,'omitnan'));
+        models.coeffRSq( m, 4:nP+3 ) = array2table(mean(coeffRSq,'omitnan'));
 
              
         disp(['Model: type = ' modelName{i} ...
           '; vars = ' predSetName{j} ...
-          '; train error = ' num2str(models.perf.TrainRSq(m)) ...
-          '; test error = ' num2str(models.perf.TestRSq(m)) ...
-          '; -- No Warp Model: train error = ' ...
+          '; train rsq = ' num2str(models.perf.TrainRSq(m)) ...
+          '; test rsq = ' num2str(models.perf.TestRSq(m)) ...
+          '; -- No Warp Model: train rsq = ' ...
                             num2str(models.perf.TrainRSq_NoWarp(m)) ...
-          '; test error = ' num2str(models.perf.TestRSq_NoWarp(m)) ]);
+          '; test rsq = ' num2str(models.perf.TestRSq_NoWarp(m)) ]);
         
     end
     
@@ -226,7 +219,8 @@ end
 
 
 
-function [ trnRSq, tstRSq, inModel, coeff, tStat, RSq ] = ...
+function [ trnRSq, tstRSq, inModel, tStat, explRSq, ...
+            tstRMSE, tstAcc, tstSen, tstSpc ] = ...
                                 fitModel( trnData, tstData, ...
                                           distFn, linkFn, ...
                                           doStepwise, setup )
@@ -248,7 +242,6 @@ function [ trnRSq, tstRSq, inModel, coeff, tStat, RSq ] = ...
                       'Link', linkFn );
 
     end
-    warning( 'on', 'all' );
     
     % get ground truth
     trnY = table2array( trnData(:,end) );
@@ -257,69 +250,56 @@ function [ trnRSq, tstRSq, inModel, coeff, tStat, RSq ] = ...
     % make predictions
     trnYHat = predict( mdl, trnData );
     tstYHat = predict( mdl, tstData );
+    
+    % get model fit
+    trnRSq = corr( trnY, trnYHat )^2;
+    tstRSq = corr( tstY, tstYHat )^2;
 
     % compute errors
-    if strcmp(linkFn,'logit')
-        
+    if strcmp(linkFn,'logit')       
         % is classifier model
-        trnRSq = accuracy( trnY, trnYHat );            
-        tstRSq = accuracy( tstY, tstYHat ); 
+        tstYHat = round( tstYHat, 0 );
+        tstClassPerf = classperf( tstY, tstYHat );
+        tstAcc = tstClassPerf.CorrectRate;
+        tstSen = tstClassPerf.Sensitivity;
+        tstSpc = tstClassPerf.Specificity;
+        tstRMSE = 0;
 
     else
         % is regression model
-        trnRSq = rsquared( trnY, trnYHat );
-        tstRSq = rsquared( tstY, tstYHat );
+        tstRMSE = sqrt( mean( (tstYHat-tstY).^2) );
+        tstAcc = 0;
+        tstSen = 0;
+        tstSpc = 0;
 
     end
     
     % record model coefficients
     inModel = mdl.VariableInfo.InModel(1:end-1);
     nCoeff = length( inModel );
-    coeff = zeros( nCoeff, 1 );
     tStat = zeros( nCoeff, 1 );
     j = 1;
     for i = 1:nCoeff
         if inModel(i)
             j = j+1;
-            coeff(i) = mdl.Coefficients.Estimate(j);
             tStat(i) = mdl.Coefficients.tStat(j);
         else
-            coeff(i) = NaN;
             tStat(i) = NaN;
         end
     end
     
     % obtain explained variances
-    RSq = zeros( nCoeff, 1 );
+    explRSq = zeros( nCoeff, 1 );
     for i = 1:nCoeff
         if inModel(i)
             mdl1 = removeTerms( mdl, ...
                             mdl.VariableInfo.Properties.RowNames{i} );
-            RSq(i) = mdl.Rsquared.Ordinary - mdl1.Rsquared.Ordinary;
+            explRSq(i) = mdl.Rsquared.Ordinary - mdl1.Rsquared.Ordinary;
         end
     end
-
-end
-
-
-
-function rsq = rsquared( y, yHat )
-
-rsq = corr( y, yHat )^2;
-
-end
-
-
-
-function correct = accuracy( y, yHat )
-
-c = y > 0.5;
-cHat = yHat > 0.5;
-
-isMatch = c==cHat;
-
-correct = sum( isMatch )/length( y );
-
+    
+    warning( 'on', 'all' );
+    
 end
 
 

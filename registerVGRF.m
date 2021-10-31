@@ -18,18 +18,19 @@ function [ XFdReg, warpFd ] = registerVGRF( t, XFd, type, setup, warpFd0 )
 
 % initialise
 monotonic = true;
-nProcustes = setup.nIterations;
+nProcrustes = setup.nIterations;
 N = size( getcoef( XFd ), 2 );
 
 XFdReg = XFd;
-if nargin < 5
-    warpT = repmat( t, N, 1 );
+if nargin < 5 || isempty( warpFd0 )
+    warpT = repmat( t, N, 1 )';
 else
-    warpT = eval_fd( repmat( t, N, 1 ), warpFd0 );
+    warpT = eval_fd( t, warpFd0 );
+    warpT = max( min( warpT, t(end) ), t(1) );
 end
 
 % use a Procustes style loop
-for i = 1:nProcustes   
+for i = 1:nProcrustes   
     
     switch type
         
@@ -58,6 +59,14 @@ for i = 1:nProcustes
             [ XFdReg, warpFd ] = landmarkreg( ...
                                         XFdReg, lm.case, lm.mean, ...
                                         wFdRegPar, monotonic, setup.XLambda );
+                                    
+            if i == nProcrustes
+                % final iteration
+                lm = findGRFlandmarks( t, XFdReg, setup.lm );
+                disp(['Landmark means  = ' num2str( lm.mean )]);
+                disp(['Landmark SDs    = ' num2str( std( lm.case ) )]);
+            end
+            
                                 
         case 'Continuous'
                                     
@@ -72,8 +81,7 @@ for i = 1:nProcustes
 
             XMeanFd = mean( XFdReg );
 
-            [ XFdReg, warpFd ] = register_fd( ...
-                                                XMeanFd, XFdReg, wFdRegPar) ;                       
+            [ XFdReg, warpFd ] = register_fd( XMeanFd, XFdReg, wFdRegPar );                       
                                    
         otherwise
             error([ 'Unrecognised registration type: ' type ]);

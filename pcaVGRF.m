@@ -37,6 +37,10 @@ if ~isempty( warpFd )
     pca.warp = compactPCA( pca.warp );
     pca.warpVarimax = compactPCA( pca.warpVarimax );
     
+    % re-scale warp harmonic scores from milliseconds to seconds
+    pca.warp.harmscr = pca.warp.harmscr/1000;
+    pca.warpVarimax.harmscr = pca.warpVarimax.harmscr/1000;
+    
 end
 
 disp(['Total explained variance = ' ...

@@ -51,6 +51,6 @@ switch setup.faultCriterion
         error('Unrecognised fault criterion.');
 end
 
-disp(['Faulty registrations = ' num2str( sum(isValid) )]);
+disp(['Faulty registrations = ' num2str( sum(~isValid) )]);
 
 end
