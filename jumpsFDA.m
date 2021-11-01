@@ -116,7 +116,7 @@ setup.models.seed = 12345; % random seed for reproducibility
 setup.models.spec = 'linear'; % type of GLM
 setup.models.upper = 'linear'; % linear model without interactions
 setup.models.criterion = 'bic'; % predictor selection criterion
-setup.models.RSqMeritThreshold = 0.0; % merit threshold for stepwise selection
+setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
 setup.filename = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
 setup.filename2 = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
@@ -374,12 +374,12 @@ for i = 1:nSets
                end
 
                % fit models to the data
-               %if isempty( models{i,j,k,l} )
+               if isempty( models{i,j,k,l} )
                    models{i,j,k,l} = fitVGRFModels( ...
                                         results{i,j,k,l}, ...
                                         part, setup, ...
                                         models{i,j,k,l} );
-               %end
+               end
                
                % store data
                save( setup.filename2, ...
