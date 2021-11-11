@@ -49,31 +49,36 @@ predIdxSet{4} = pred1st+3*nPred : pred1st+4*nPred-1;
 chosenPredSets = [ 1 4 ]; % only unrotated PCA and varimax ACP
 nPredSets = length( chosenPredSets );
 
+% define model tables
+varNamesModels = { 'Dataset', 'Model', 'PredictorSet' };
+varNamesPerf = { 'LogLikelihood', 'AIC', ...
+                'TrainRSq', 'TestRSq', ...
+                'TrainRMSE', 'TestRMSE', ...
+                'TrainAccuracy', 'TestAccuracy', ...
+                'ExplByWarp' };
+varNamesDef = results.Properties.VariableNames(8:7+nPred);
+nVarModels = length( varNamesModels );
+nVarPerf = length( varNamesPerf );
+nVarDef = length( varNamesDef );
+            
 if isempty( models )       
 
     % define model performance table
-    varNames = { 'Dataset', 'Model', 'PredictorSet', ...
-                    'TrainRSq', 'TrainRSq_NoWarp', ...
-                    'TestRSq', 'TestRSq_NoWarp', ...
-                    'TestRMSE', 'TestAccuracy', ...
-                    'TestSensitivity' , 'TestSpecificity' };
-    varTypes = [repmat( {'string'}, 1, 3) ...
-                 repmat( {'double'}, 1, 8) ];
+    varTypes = [ repmat({'string'}, 1, nVarModels) ...
+                 repmat({'double'}, 1, nVarPerf) ];
     models.perf = table( ...
-                'Size', [ nModels*nPredSets length(varNames) ], ...
-                'VariableNames', varNames, ...
+                'Size', [ nModels*nPredSets nVarModels+nVarPerf ], ...
+                'VariableNames', [varNamesModels varNamesPerf], ...
                 'VariableTypes', varTypes );
+    models.stderr = models.perf;
      
     % define model definition tables
-    varNames = [ { 'Dataset', 'Model', 'PredictorSet' } ...
-                    results.Properties.VariableNames(8:7+nPred) ];
-    varTypes = [ { 'string', 'string', 'string' } ...
-                    repmat( {'double'}, 1, nPred) ];
+    varTypes = [ repmat({'string'}, 1, nVarModels) ...
+                 repmat({'double'}, 1, nVarDef) ];
     models.incl = table( ...
-                'Size', [ nModels*nPredSets length(varNames) ], ...
-                'VariableNames', varNames, ...
+                'Size', [ nModels*nPredSets nVarModels+nVarDef ], ...
+                'VariableNames', [varNamesModels varNamesDef], ...
                 'VariableTypes', varTypes );
-    models.coeff = models.incl;
     models.tStat = models.incl; 
     models.coeffRSq = models.incl;
 
@@ -114,6 +119,8 @@ for i = chosenModels
             % setup record    
             models.perf = setupRecord( models.perf, m, ...
                                 dataset, modelName{i}, predSetName{j} );
+            models.stderr = setupRecord( models.stderr, m, ...
+                                dataset, modelName{i}, predSetName{j} );
             models.incl = setupRecord( models.incl, m, ...
                                 dataset, modelName{i}, predSetName{j} );
             models.tStat = setupRecord( models.tStat, m, ...
@@ -133,19 +140,16 @@ for i = chosenModels
             predIdxAll = predIdxAmpl;
         end
             
-        % setup records of fold-specific model fits
-        nP = length( predIdxAll );
-        trnRSq = zeros( nPartitions, 2 );
-        tstRSq = zeros( nPartitions, 2 );
-        inModel = false( nPartitions, nP );
-        tStat = zeros( nPartitions, nP );
-        coeffRSq = zeros( nPartitions, nP );
-        tstRMSE = zeros( nPartitions, 1 );
-        tstAcc = zeros( nPartitions, 1 );
-        tstSen = zeros( nPartitions, 1 );
-        tstSpc = zeros( nPartitions, 1 );
+        % setup ararys for fold-specific model fits
+        nPred = length( predIdxAll );
+        perf = table( ...
+                'Size', [ nPartitions nVarPerf ], ...
+                'VariableNames', varNamesPerf, ...
+                'VariableTypes', repmat({'double'}, 1, nVarPerf) );
+        inModel = zeros( nPartitions, nPred );
+        tStat = zeros( nPartitions, nPred );
+        coeffRSq = zeros( nPartitions, nPred );
 
-        
         for k = 1:nPartitions          
       
             % create training and testing sets
@@ -154,61 +158,46 @@ for i = chosenModels
             tstData = results( tstSelect(:,k), ...
                                 [ predIdxAll outcomeIdx(i) ] );
     
-            % fit the full model with all predictors
-            [ trnRSq(k,1), tstRSq(k,1), ...
-                inModel(k,:), tStat(k,:), coeffRSq(k,:), ...
-                tstRMSE(k), tstAcc(k), tstSen(k), tstSpc(k)] = ...
-                          fitModel( ...
+            % fit the model for this partition
+            [ perf(k,:), inModel(k,:), tStat(k,:), coeffRSq(k,:) ] = ...
+                          fitModel( perf(k,:), ...
                                     trnData, tstData, ...
                                     modelDist{i}, modelLink{i}, ...
                                     doStepwise, setup.models );
-
-            
-            if ~noWarpPred
-                % create the revised data sets without warp predictors
-                trnData = results( trnSelect(:,k), ...
-                                    [ predIdxAmpl outcomeIdx(i) ] );
-                tstData = results( tstSelect(:,k), ...
-                                    [ predIdxAmpl outcomeIdx(i) ] );
-
-                % fit the model with only amplitude predictors
-                [ trnRSq(k,2), tstRSq(k,2) ] = ...
-                                fitModel( ...
-                                        trnData, tstData, ...
-                                        modelDist{i}, modelLink{i}, ...
-                                        doStepwise, setup.models );
-                                    
-            end
-            
+                                            
         end
-                                       
-        
+                                              
         % average performance across all partitions
-        models.perf.TrainRSq(m) = mean( trnRSq(:,1) );            
-        models.perf.TestRSq(m) = mean( tstRSq(:,1) );
-        models.perf.TrainRSq_NoWarp(m) = mean( trnRSq(:,2) );            
-        models.perf.TestRSq_NoWarp(m) = mean( tstRSq(:,2) );
+        models.perf( m, 4:nVarPerf+3 ) = array2table(mean( table2array(perf) ));
         
-        models.perf.TestRMSE(m) = mean( tstRMSE );
-        models.perf.TestAccuracy(m) = mean( tstAcc );
-        models.perf.TestSensitivity(m) = mean( tstSen );
-        models.perf.TestSpecificity(m) = mean( tstSpc );
+        % calculate the standard error in this estimate
+        models.stderr( m, 4:nVarPerf+3 ) = ...
+            array2table( std( table2array(perf) )/sqrt( nPartitions ) );
         
         % count number of variables included
-        models.incl( m, 4:nP+3 ) = array2table(sum( inModel ));
+        models.incl( m, 4:nPred+3 ) = array2table(sum( inModel ));
         
         % average coefficients that were included
-        models.tStat( m, 4:nP+3 ) = array2table(mean(tStat,'omitnan'));
-        models.coeffRSq( m, 4:nP+3 ) = array2table(mean(coeffRSq,'omitnan'));
+        models.tStat( m, 4:nPred+3 ) = array2table(mean( tStat,'omitnan'));
+        models.coeffRSq( m, 4:nPred+3 ) = array2table(mean( coeffRSq, 'omitnan' ));
 
-             
-        disp(['Model: type = ' modelName{i} ...
-          '; vars = ' predSetName{j} ...
-          '; train fit = ' num2str(models.perf.TrainRSq(m)) ...
-          '; test fit = ' num2str(models.perf.TestRSq(m)) ...
-          '; -- No Warp Model: train fit = ' ...
-                            num2str(models.perf.TrainRSq_NoWarp(m)) ...
-          '; test fit = ' num2str(models.perf.TestRSq_NoWarp(m)) ]);
+        if classifier
+            disp(['Model: type = ' modelName{i} ...
+              '; vars = ' predSetName{j} ...
+              '; loglikelihood = ' num2str(models.perf.LogLikelihood(m),'%.1f') ...
+              '; train fit = ' num2str(models.perf.TrainAccuracy(m),'%.3f') ...
+                ' ' char(177) ' ' num2str(models.stderr.TrainAccuracy(m),'%.3f') ...
+              '; test fit = ' num2str(models.perf.TestAccuracy(m),'%.3f') ...
+                ' ' char(177) ' ' num2str(models.stderr.TestAccuracy(m),'%.3f')]);
+        else
+            disp(['Model: type = ' modelName{i} ...
+              '; vars = ' predSetName{j} ...
+              '; loglikelihood = ' num2str(models.perf.LogLikelihood(m),'%.1f') ...
+              '; train fit = ' num2str(models.perf.TrainRSq(m),'%.3f') ...
+                ' ' char(177) ' ' num2str(models.stderr.TrainRSq(m),'%.3f') ...
+              '; test fit = ' num2str(models.perf.TestRSq(m),'%.3f') ...
+                ' ' char(177) ' ' num2str(models.stderr.TestRSq(m),'%.3f')]);
+        end
         
     end
     
@@ -219,9 +208,8 @@ end
 
 
 
-function [ trnRSq, tstRSq, inModel, tStat, explRSq, ...
-            tstRMSE, tstAcc, tstSen, tstSpc ] = ...
-                                fitModel( trnData, tstData, ...
+function [ perf, inModel, tStat, explRSq ] = ...
+                                fitModel( perf, trnData, tstData, ...
                                           distFn, linkFn, ...
                                           doStepwise, setup )
     warning( 'off', 'all' );
@@ -252,25 +240,33 @@ function [ trnRSq, tstRSq, inModel, tStat, explRSq, ...
     tstYHat = predict( mdl, tstData );
     
     % get model fit
-    trnRSq = corr( trnY, trnYHat )^2;
-    tstRSq = corr( tstY, tstYHat )^2;
+    perf.LogLikelihood = mdl.LogLikelihood;
+    perf.AIC = mdl.ModelCriterion.AIC;
+    
+    perf.TrainRSq = corr( trnY, trnYHat )^2;
+    perf.TestRSq = corr( tstY, tstYHat )^2;
 
     % compute errors
     if strcmp(linkFn,'logit')       
         % is classifier model
+        trnYHat = round( trnYHat, 0 );
+        trnClassPerf = classperf( trnY, trnYHat );
+        perf.TrainAccuracy = trnClassPerf.CorrectRate;
+        perf.TrainRMSE = 0;      
+        
         tstYHat = round( tstYHat, 0 );
         tstClassPerf = classperf( tstY, tstYHat );
-        tstAcc = tstClassPerf.CorrectRate;
-        tstSen = tstClassPerf.Sensitivity;
-        tstSpc = tstClassPerf.Specificity;
-        tstRMSE = 0;
+        perf.TestAccuracy = tstClassPerf.CorrectRate;
+        perf.TestRMSE = 0;
 
     else
         % is regression model
-        tstRMSE = sqrt( mean( (tstYHat-tstY).^2) );
-        tstAcc = 0;
-        tstSen = 0;
-        tstSpc = 0;
+        perf.TrainRMSE = sqrt( mean( (trnYHat-trnY).^2) );
+        perf.TrainAccuracy = 0;
+                
+        perf.TestRMSE = sqrt( mean( (tstYHat-tstY).^2) );
+        perf.TestAccuracy = 0;
+
 
     end
     
@@ -290,11 +286,15 @@ function [ trnRSq, tstRSq, inModel, tStat, explRSq, ...
     
     % obtain explained variances
     explRSq = zeros( nCoeff, 1 );
+    perf.ExplByWarp = 0;
     for i = 1:nCoeff
         if inModel(i)
             mdl1 = removeTerms( mdl, ...
                             mdl.VariableInfo.Properties.RowNames{i} );
             explRSq(i) = mdl.Rsquared.Ordinary - mdl1.Rsquared.Ordinary;
+            if mdl.VariableInfo.Properties.RowNames{i}(6) == 'W'
+                perf.ExplByWarp = perf.ExplByWarp + explRSq(i);
+            end
         end
     end
     

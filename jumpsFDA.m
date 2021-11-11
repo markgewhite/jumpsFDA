@@ -15,6 +15,7 @@ if ismac
     rootpath = '/Users/markgewhite/Google Drive/PhD/Studies/Jumps';
 else
     rootpath = 'C:\Users\markg\Google Drive\PhD\Studies\Jumps';
+    rootpath = 'C:\Users\m.g.e.white\My Drive\PhD\Studies\Jumps';
 end
 
 datapath = [ rootpath '\Data\Processed\Training' ];
@@ -110,7 +111,7 @@ setup.reg.faultZScore = 3.5; % fault threshold
 setup.pca.nComp = 15; % number of PCA components to be retained
 setup.pca.nCompWarp = 5; % number of PCA components to be retained
 
-setup.models.nRepeats = 2; % number of repetitions of CV
+setup.models.nRepeats = 4; % number of repetitions of CV
 setup.models.nFolds = 5; % number of CV folds for each repetition
 setup.models.seed = 12345; % random seed for reproducibility
 setup.models.spec = 'linear'; % type of GLM
@@ -239,7 +240,7 @@ vgrfACP = cell( nSets, nStd, nLMReg, nCTReg );
 results = cell( nSets, nStd, nLMReg, nCTReg );
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
-% load( setup.filename );
+load( setup.filename );
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -321,7 +322,7 @@ for i = 1:nSets
                    end
                    
                else % second 'l' loop
-                   if isempty( vgrfFd{i,j,k,l} )
+                   %if isempty( vgrfFd{i,j,k,l} )
                        % continuous registration required
                        % applied to prior-registered curves
                        [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l} ] = ...
@@ -330,7 +331,7 @@ for i = 1:nSets
                                         'Continuous', ...
                                         setup.reg, ...
                                         warpFd{i,j,k,1} );
-                   end
+                   %end
                end
                    
                if k > 1 || l == 2
