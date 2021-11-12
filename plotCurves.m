@@ -11,49 +11,65 @@
 %
 % ************************************************************************
 
-function fig = plotCurves( vgrfFd, warpFd )
+function [ fig1, fig2 ] = plotCurves( vgrfFd, warpFd )
 
-fig = figure;
-fig.Position(3) = fig.Position(3)*1.75;
+% plot the VGRF curves
+fig1 = figure;
+fig1.Position(3) = fig1.Position(3)*1.5;
 
-ax = subplot( 2, 4, 1 );
+ax = subplot( 2, 3, 1 );
 fd = vgrfFd{ 1, 1, 1, 1 }; % WOA-PAD0000-
 plotCurveSet( ax, fd, [ false true ], 1 );
 title( ax, 'PAD0000-' );
 
-ax = subplot( 2, 4, 2 );
+ax = subplot( 2, 3, 2 );
 fd = vgrfFd{ 1, 1, 3, 1 }; % WOA-PAD0010-
 plotCurveSet( ax, fd, [ false false ], 2 );
 title( ax, 'PAD0010-' );
 
-ax = subplot( 2, 4, 3 );
+ax = subplot( 2, 3, 3 );
 fd = vgrfFd{ 1, 1, 3, 2 }; % WOA-PAD0010C
 plotCurveSet( ax, fd, [ false false ], 3 );
 title( ax, 'PAD0010C' );
 
-ax = subplot( 2, 4, 4 );
-fd = warpFd{ 1, 1, 3, 2 }; % WOA-PAD0010C warp
-plotCurveSet( ax, fd, [ false true ], 4 );
-title( ax, 'PAD0010C (Warp)' );
-
-ax = subplot( 2, 4, 5 );
-fd = vgrfFd{ 1, 2, 1, 1 }; % WOA-PAD0000-
-plotCurveSet( ax, fd, [ true true ], 5 );
+ax = subplot( 2, 3, 4 );
+fd = vgrfFd{ 1, 2, 1, 1 }; % WOA-LTN0000-
+plotCurveSet( ax, fd, [ true true ], 4 );
 title( ax, 'LTN0000-' );
 
-ax = subplot( 2, 4, 6 );
-fd = vgrfFd{ 1, 2, 3, 1 }; % WOA-PAD0010-
-plotCurveSet( ax, fd, [ true false ], 6 );
+ax = subplot( 2, 3, 5 );
+fd = vgrfFd{ 1, 2, 3, 1 }; % WOA-LTN0010-
+plotCurveSet( ax, fd, [ true false ], 5 );
 title( ax, 'LTN0010-' );
 
-ax = subplot( 2, 4, 7 );
-fd = vgrfFd{ 1, 2, 3, 2 }; % WOA-PAD0010C
-plotCurveSet( ax, fd, [ true false], 7 );
+ax = subplot( 2, 3, 6 );
+fd = vgrfFd{ 1, 2, 3, 2 }; % WOA-LTN0010C
+plotCurveSet( ax, fd, [ true false], 6 );
 title( ax, 'LTN0010C' );
 
-ax = subplot( 2, 4, 8 );
-fd = warpFd{ 1, 2, 3, 2 }; % WOA-PAD0010C warp
-plotCurveSet( ax, fd, [ true true ], 8 );
+
+% plot the warp curves
+fig2 = figure;
+fig2.Position(3) = fig2.Position(3)*1.5;
+
+ax = subplot( 1, 4, 1 );
+fd = warpFd{ 1, 1, 3, 1 }; % WOA-PAD0010- warp
+plotCurveSet( ax, fd, [ true true ], 1 );
+title( ax, 'PAD0010- (Warp)' );
+
+ax = subplot( 1, 4, 2 );
+fd = warpFd{ 1, 1, 3, 2 }; % WOA-PAD0010C warp
+plotCurveSet( ax, fd, [ true false ], 2 );
+title( ax, 'PAD0010C (Warp)' );
+
+ax = subplot( 1, 4, 3 );
+fd = warpFd{ 1, 2, 3, 1 }; % WOA-LTN0010- warp
+plotCurveSet( ax, fd, [ true false ], 3 );
+title( ax, 'LTN0010- (Warp)' );
+
+ax = subplot( 1, 4, 4 );
+fd = warpFd{ 1, 2, 3, 2 }; % WOA-LTN0010C warp
+plotCurveSet( ax, fd, [ true false ], 3 );
 title( ax, 'LTN0010C (Warp)' );
 
 end
@@ -67,10 +83,12 @@ isVGRF = (strcmp(names{3}(end-7:end), 'GRF (BW)' ));
 
 basis = getbasis( fd );
 tRng = getbasisrange( basis );
-tRng(1) = max( -1500, tRng(1) );
+if isVGRF
+    tRng(1) = max( -1500, tRng(1) );
+end
 
 nBasis = getnbasis( basis );
-nPts = max( [201, 10*nBasis+1] );
+nPts = max( [101, 10*nBasis+1] );
 tSpan = linspace( tRng(1), tRng(2), nPts )';
 
 % compute points for all curves
@@ -80,8 +98,8 @@ y = eval_fd( tSpan, fd );
 nCurves = size( y, 2 );
 hold( ax, 'on' );
 for i = 1:nCurves
-    lineObj = plot( ax, tSpan, y(:,i), 'LineWidth', 0.75 );
-    lineObj.Color(4) = 0.2; % transparency
+    lineObj = plot( ax, tSpan, y(:,i), 'LineWidth', 0.25 );
+    lineObj.Color(4) = 0.6; % transparency
 end
 
 if isVGRF
@@ -113,7 +131,6 @@ if showLabel(2)
         ax.YAxis.Label.Position(1) = -0.18;
     else
         ylabel( ax, 'Warp Time (ms)' );
-        ax.YAxisLocation = 'right';
     end
 end
 
