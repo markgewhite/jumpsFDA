@@ -17,8 +17,9 @@ darkBlue = [0.0000 0.4470 0.7410];
 lightBlue = [0.3010 0.7450 0.9330];
 darkRed = [0.6350 0.0780 0.1840];
 lightRed = [0.9290 0.6940 0.1250];
-xCol1 = 60;
+xCol1 = 65;
 xCol2 = 90;
+fontSize = 11;
 
 labelsShown = {'LTN1110C', 'LTN1100C', 'PAD0001C', 'PAD0000C', ...
                 'PAD1110-', 'LTN1110-', 'PAD0001-', 'LTN1000-', ...
@@ -69,17 +70,18 @@ for i = 1:n
             colour = red;
     end
     
-    sz = 20 + length( strfind(D.LM(i),'1') )*15;
+    sz = 30 + length( strfind(D.LM(i),'1') )*20;
     if marker=='s'
         sz = sz*sqrt(2);
     end
 
-    scatter( ax, D.pt(i,1), D.pt(i,2), sz, colour, ...
-         'filled', marker, 'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
+    scatter( ax, D.pt(i,1), D.pt(i,2), sz, colour, 'filled', marker, ...
+        'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
     
     label = strcat( D.norm(i), D.LM(i), D.CT(i) );
     if any(strcmp( label, labelsShown ))
-        text( ax, D.pt(i,1)+2, D.pt(i,2), label );
+        text( ax, D.pt(i,1)+2, D.pt(i,2), label, ...
+            'FontName', 'Arial', 'FontSize', fontSize );
     end
 
 end
@@ -89,44 +91,49 @@ plot( ax, [0 100], [0 0], 'k:', 'LineWidth', 0.5 );
 % manual legend
 scatter( ax, xCol1, 160, 50*sqrt(2), lightRed, ...
     'filled', 's', 'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol1+2, 160, 'LTN - With CT' );
+text( ax, xCol1+2, 160, 'LTN - With CT', ...
+    'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol1, 150, 50, darkRed, ...
     'filled', 'o', 'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol1+2, 150, 'PAD - With CT' );
+text( ax, xCol1+2, 150, 'PAD - With CT', ...
+    'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol1, 140, 50*sqrt(2), lightBlue, ...
     'filled', 's', 'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol1+2, 140, 'LTN - No CT' );
+text( ax, xCol1+2, 140, 'LTN - No CT', ...
+    'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol1, 130, 50, darkBlue, ...
     'filled', 'o', 'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol1+2, 130, 'PAD - No CT' );
+text( ax, xCol1+2, 130, 'PAD - No CT', ...
+    'FontName', 'Arial', 'FontSize', fontSize );
 
-text( ax, xCol2+5, 180, 'No. Landmarks', 'HorizontalAlignment', 'right' );
+text( ax, xCol2+5, 180, 'No. Landmarks', ...
+    'HorizontalAlignment', 'right', 'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol2+5, 170, 20, [0 0 0 ], 'o', ...
         'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol2, 170, '0' );
+text( ax, xCol2, 170, '0', 'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol2+5, 160, 20+15, [0 0 0 ], 'o', ...
         'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol2, 160, '1' );
+text( ax, xCol2, 160, '1', 'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol2+5, 150, 20+30, [0 0 0 ], 'o', ...
         'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol2, 150, '2' );
+text( ax, xCol2, 150, '2', 'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol2+5, 140, 20+45, [0 0 0 ], 'o', ...
         'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol2, 140, '3' );
+text( ax, xCol2, 140, '3', 'FontName', 'Arial', 'FontSize', fontSize );
 scatter( ax, xCol2+5, 130, 20+60, [0 0 0 ], 'o', ...
         'MarkerEdgeColor', 'k', 'LineWidth', 0.25 );
-text( ax, xCol2, 130, '4' );
+text( ax, xCol2, 130, '4', 'FontName', 'Arial', 'FontSize', fontSize );
 
 hold( ax, 'off');
 
 % formatting
-ax.FontSize = 9;
+ax.FontSize = fontSize;
 ax.FontName = 'Arial';
 ax.TickDir = 'out';
 xlim( ax, [0 100] );
 ylim( ax, [-20 180] );
-xlabel( ax, 'Phase Variance' );
-ylabel( ax, 'Amplitude Variance' );
+xlabel( ax, 'Amplitude Variance' );
+ylabel( ax, 'Phase Variance' );
 
 
 

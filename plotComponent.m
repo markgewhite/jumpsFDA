@@ -8,17 +8,14 @@
 %       pca: functional FPCA data structure
 %       coeff: model coefficients (to provide sign)
 %       name: title for the plot
-%       showLabels: logical stating whether to show x and y axis labels
-%       showLegend: whether to show the legend
-%       
+%       showLabels: logical stating whether to show x and y axis labels%       
 %
 % Output:
 %       Plots and text
 %
 % ************************************************************************
 
-function plotComponent( ax, i, pca, coeff, name, showLabels, showLegend  )
-
+function plotRef = plotComponent( ax, i, pca, coeff, name, showLabels  )
 
 % use the unrotated components
 pca = pca.unrotated; 
@@ -39,29 +36,24 @@ yPlusRev = [ yPlus; flipud(y0) ];
 yMinusRev = [ yMinus; flipud(y0) ];
     
 % draw shaded regions for plus and minus
-hold on;
-plotRef(1) = fill( ax, tRev, yPlusRev, 'r', 'FaceAlpha', 0.4, ...
-                'DisplayName', '+' );
-plotRef(2) = fill( ax, tRev, yMinusRev, 'b', 'FaceAlpha', 0.4, ...
-                'DisplayName', '-' );
+hold( ax, 'on' );
+plotRef(1) = fill( ax, tRev, yPlusRev, 'b', 'FaceAlpha', 0.25, ...
+                'EdgeColor', 'none', ...
+                'DisplayName', [name ': +ve'] );
+plotRef(2) = fill( ax, tRev, yMinusRev, 'b', 'FaceAlpha', 0.50, ...
+                'EdgeColor', 'none', ...
+                'DisplayName', [name ': -ve'] );
 
 % draw a border line
-plot( ax, tSpan, yPlus, 'r' );
-plot( ax, tSpan, yMinus, 'b' );
+plot( ax, tSpan, yPlus, 'b' );
+plot( ax, tSpan, yMinus, 'b' );  
 
-% draw the mean line
-plot( ax, tSpan, y0, 'k' );  
-
-hold off;
-
-if showLegend
-    legend( plotRef, 'Location', 'northwest' );
-end
+hold( ax, 'off' );
     
 xlim( ax, [-1100 0] );
 ytickformat( ax, '%.1f' );
 
-title( ax, [name num2str(i)], ...
+title( ax, [name(1:3) ' FPC' num2str(i)], ...
         'FontSize', 9, 'FontWeight', 'normal' );
 
 if showLabels(1)
