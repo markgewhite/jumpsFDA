@@ -240,7 +240,7 @@ vgrfACP = cell( nSets, nStd, nLMReg, nCTReg );
 results = cell( nSets, nStd, nLMReg, nCTReg );
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
-load( setup.filename );
+% load( setup.filename );
 
 % set random seed for reproducibility
 rng( setup.models.seed );
