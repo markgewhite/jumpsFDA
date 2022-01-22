@@ -101,7 +101,7 @@ for i = chosenModels
         
         if newFit 
             % carry out model fitting without stepwise selection
-            doStepwise = true;
+            doStepwise = false;
                                 
         else
             % check the fixed model above a performance threshold
