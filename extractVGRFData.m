@@ -39,6 +39,7 @@ vgrfData = cell( nTotal, 1 );
 vgrfRef = zeros( nTotal, 2 );
 withArms = false( nTotal, 1 );
 typErr = zeros( nTotal, 1 );
+fltTime = zeros( nTotal, 1 );
 k = 0;
 
 for i = 1:nSubjects
@@ -52,6 +53,7 @@ for i = 1:nSubjects
                 && ~ismember( jumpID, jumpExclusions )
             
             k = k+1;
+            fltTime( k ) = jumpFlightTime( grf.raw{i,j}, 1 );
             vgrfData{ k } = ...
                     grf.raw{i,j}( 1:grf.takeoff(i,j) ) / bwall(i,j);
 
@@ -69,8 +71,11 @@ vgrfData = vgrfData(1:k);
 vgrfRef = vgrfRef(1:k,:);
 withArms = withArms(1:k,:);
 typErr = typErr(1:k);
+fltTime = fltTime(1:k);
 
 disp(['Typical VGRF Error = ' num2str(mean(typErr)) ' BW']);
+disp(['Flight Time = ' num2str(mean(fltTime), '%.0f') ' +/- ' ...
+                        num2str(std(fltTime), '%.0f') ' ms' ]);
 
 % combine all datasets together
 curveSet = { vgrfData(~withArms), vgrfData };

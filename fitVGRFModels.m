@@ -46,7 +46,7 @@ predIdxSet{1} = pred1st : pred1st+nPred-1;
 predIdxSet{2} = pred1st+nPred : pred1st+2*nPred-1;
 predIdxSet{3} = pred1st+2*nPred : pred1st+3*nPred-1;
 predIdxSet{4} = pred1st+3*nPred : pred1st+4*nPred-1;
-chosenPredSets = [ 1 4 ]; % only unrotated PCA and varimax ACP
+chosenPredSets = [ 1 4 ]; 
 nPredSets = length( chosenPredSets );
 
 % define model tables
@@ -101,7 +101,7 @@ for i = chosenModels
         
         if newFit 
             % carry out model fitting without stepwise selection
-            doStepwise = false;
+            doStepwise = true;
                                 
         else
             % check the fixed model above a performance threshold
@@ -128,20 +128,34 @@ for i = chosenModels
             models.coeffRSq = setupRecord( models.coeffRSq, m, ...
                                 dataset, modelName{i}, predSetName{j} );
         end
-            
+        
+        % identify the predictors
         predIdxAll = predIdxSet{j};
                
         nPW = length(predIdxAll) - setup.pca.nCompWarp;
         predIdxAmpl = predIdxAll( 1:nPW );
-        
-        noWarpPred = sum( table2array( ...
-                results(:, predIdxAll(nPW+1:end)) ), 'all' )==0;
-        if noWarpPred
-            predIdxAll = predIdxAmpl;
+        predIdxWarp = predIdxAll( nPW+1:end );
+        warpPred = sum( table2array( ...
+                results(:, predIdxWarp) ), 'all' )~=0;
+
+        % assemble the table of predictors
+        predAmpl = results( :, predIdxAmpl );
+        if warpPred
+            predWarp = results( :, predIdxWarp );
+            if setup.models.interactions
+                predInteract = interactions( predAmpl, predWarp );
+                predictors = [ predAmpl predWarp predInteract ];
+            else
+                predictors = [ predAmpl predWarp ];
+            end
+        else
+            predictors = predAmpl;
         end
+
+        outcome = results( :, outcomeIdx(i) );
             
         % setup ararys for fold-specific model fits
-        nPred = length( predIdxAll );
+        nPred = size( predictors, 2 );
         perf = table( ...
                 'Size', [ nPartitions nVarPerf ], ...
                 'VariableNames', varNamesPerf, ...
@@ -153,11 +167,11 @@ for i = chosenModels
         for k = 1:nPartitions          
       
             % create training and testing sets
-            trnData = results( trnSelect(:,k), ...
-                                [ predIdxAll outcomeIdx(i) ] );
-            tstData = results( tstSelect(:,k), ...
-                                [ predIdxAll outcomeIdx(i) ] );
-    
+            trnData = [ predictors( trnSelect(:,k), : ) ...
+                                outcome( trnSelect(:,k), : )  ];
+            tstData = [ predictors( tstSelect(:,k), : ) ...
+                                outcome( tstSelect(:,k), : )  ];
+
             % fit the model for this partition
             [ perf(k,:), inModel(k,:), tStat(k,:), coeffRSq(k,:) ] = ...
                           fitModel( perf(k,:), ...
@@ -300,6 +314,33 @@ function [ perf, inModel, tStat, explRSq ] = ...
     
     warning( 'on', 'all' );
     
+end
+
+
+
+function ZTbl = interactions( XATbl, XBTbl ) 
+
+nRows = size( XATbl, 1 );
+nA = size( XATbl, 2 );
+nB = size( XBTbl, 2 );
+
+XA = table2array( XATbl );
+XB = table2array( XBTbl );
+Z = zeros( nRows, nA*nB );
+
+varNames = strings( nA*nB, 1 );
+for i = 1:nA
+    for j = 1:nB
+        k = (i-1)*nB+j;
+        Z( :, k ) = XA( :, i ).*XB( :, j );
+        varNames( k ) = [ XATbl.Properties.VariableNames{i} '_' ...
+                            XBTbl.Properties.VariableNames{j} ];
+    end
+end
+
+ZTbl = array2table( Z );
+ZTbl.Properties.VariableNames = varNames;
+
 end
 
 
