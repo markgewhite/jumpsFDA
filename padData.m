@@ -8,7 +8,7 @@
 %       padValue: padding value
 %
 % Output:
-%       Graphs
+%       XP: numeric array of padded time series
 %
 % ************************************************************************
 

@@ -120,8 +120,8 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = fullfile(datapath,'jumpsAnalysis7.mat'); % where to save the analysis
-setup.filename2 = fullfile(datapath,'jumpsAnalysis7.mat'); % where to save the analysis
+setup.filename = fullfile(datapath,'jumpsAnalysis8.mat'); % where to save the analysis
+setup.filename2 = fullfile(datapath,'jumpsAnalysis8.mat'); % where to save the analysis
 
 
 % ************************************************************************
@@ -141,25 +141,6 @@ jumpExclusions = [3703 3113 2107 2116 0503 0507 6010 1109];
                                     sDataID, sJumpID, jumpOrder, ...
                                     subjectExclusions, jumpExclusions );
 
-                                
-% ************************************************************************
-%   Smooth data - first cut
-% ************************************************************************
-
-
-tSpan0 = cell( nSets, 1 );
-for i = 1:nSets
-    
-    % standardised length with padding
-    maxLen = max( cellfun( @length, rawData{i} ) );
-    tSpan0{i} = -maxLen+1:0; % time domain in milliseconds 
-    
-    rawData{i} = padData( rawData{i}, ...
-                           maxLen, ...
-                           setup.data.initial );
-              
-end 
-
 
 % ************************************************************************
 %   Determine smoothing levels
@@ -167,35 +148,27 @@ end
 
 perf = cell( nSets );
 tSpan = cell( nSets, nStd );
-vgrfData{i} = cell( nSets, nStd );
+vgrfData = cell( nSets, nStd );
 
 for i = 1:nSets
-   
-    % determine jump initation
-    tStart = jumpInit( rawData{i}, ...
-                       setup.data.threshold1, ...
-                       setup.data.threshold2, ...
-                       setup.data.sustained );
-                   
+
+    seriesLengths = cellfun( @length, rawData{i} );
+    padLen = max( seriesLengths );
+    normLen = fix(median( seriesLengths ));
    
     for j = 1:nStd
 
        switch j
-           case 1
-               % pad out to longest series
-               fixStart = min( tStart );
-               
+           case 1              
                % truncate pre-padded series to this length
-               vgrfData{i,j} = rawData{i}( fixStart:end, : );              
+               vgrfData{i,j} = padData( rawData{i}, ...
+                                        padLen, ...
+                                        setup.data.initial );              
                
-           case 2
-               % time normalising to median series length
-               fixStart = fix( median( tStart ) );
-               
+           case 2              
                % truncate times series and time normalise
                vgrfData{i,j} = timeNormData( rawData{i}, ...
-                                         tStart, ...
-                                         fixStart );
+                                         normLen );
                                                                          
        end
        

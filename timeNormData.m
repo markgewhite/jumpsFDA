@@ -4,8 +4,7 @@
 %           The time series have already been padded to a fixed length.
 %
 % Parameters:
-%       X: matrix of time series
-%       trialLen: specified trial lengths
+%       X: cell array of time series
 %       fixedLen: fixed length for time normalisation
 %
 % Output:
@@ -14,31 +13,25 @@
 % ************************************************************************
 
 
-function XN = timeNormData( X, trialStarts, fixStart )
+function XN = timeNormData( X, fixedLen )
 
 % number of series
-N = size( X, 2 );
-
-% time normalised length
-fixLen = size( X, 1 ) - fixStart + 1;
-
-% trial lengths
-trialLen = size( X, 1 ) - trialStarts + 1;
+N = length( X );
 
 % padded matrix of series
-XN = zeros( fixLen, N );
+XN = zeros( fixedLen, N );
 
 % define standard time series
-tspan1 = linspace( -fixLen+1, 0, fixLen ); 
+tspan1 = linspace( -fixedLen+1, 0, fixedLen ); 
 
 for i = 1:N
     
     % define current time series
-    tspan0 = linspace( -fixLen+1, 0, trialLen(i) );
+    tspan0 = linspace( -fixedLen+1, 0, length(X{i}) );
     
     % interpolate to fit the standard timescale
     XN( :, i ) = interp1( tspan0, ...
-                          X( trialStarts(i):end, i ), ...
+                          X{i}, ...
                           tspan1, ...
                           'spline', 'extrap' ); 
 end

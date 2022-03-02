@@ -46,7 +46,7 @@ predIdxSet{1} = pred1st : pred1st+nPred-1;
 predIdxSet{2} = pred1st+nPred : pred1st+2*nPred-1;
 predIdxSet{3} = pred1st+2*nPred : pred1st+3*nPred-1;
 predIdxSet{4} = pred1st+3*nPred : pred1st+4*nPred-1;
-chosenPredSets = [ 1 4 ]; 
+chosenPredSets = [ 1 2 3 4 ]; 
 nPredSets = length( chosenPredSets );
 
 % define model tables
