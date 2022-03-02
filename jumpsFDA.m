@@ -120,8 +120,8 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
-setup.filename2 = fullfile(datapath,'jumpsAnalysis6.mat'); % where to save the analysis
+setup.filename = fullfile(datapath,'jumpsAnalysis7.mat'); % where to save the analysis
+setup.filename2 = fullfile(datapath,'jumpsAnalysis7.mat'); % where to save the analysis
 
 
 % ************************************************************************
@@ -384,12 +384,14 @@ for i = 1:nSets
                                         models{i,j,k,l} );
                end
                
-               % store data
-               save( setup.filename2, ...
-                     'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-                     'isValid', 'vgrfPCA', 'vgrfACP', 'models', 'results' ); 
-         
            end
+
+           % store data
+           save( setup.filename2, ...
+                 'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+                 'isValid', 'vgrfPCA', 'vgrfACP', 'models', 'results' ); 
+         
+
        end
        
   
