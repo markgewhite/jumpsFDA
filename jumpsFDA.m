@@ -49,17 +49,14 @@ nModels = 4; % number of models
 nLMReg = 16; % number of landmark registration combinations including none
 nCTReg = 2; % number of continuous registrations (applied or none)
 
-% presets based on not exceed jump performance error threshold
-preset.nBasis = [ 190 80; 190 80; 190 80 ];
-preset.lambda = [ 1E3 1E3; 1E3 1E3; 1E3 1E3 ];
+% presets based on not exceeding jump performance error threshold
+preset.nBasis = [ 130 105; 130 105 ];
+preset.lambda = [ 1E0 1E0; 1E0 1E0 ];
 
 % ************************************************************************
 %   Command switches
 % ************************************************************************
 
-options.test = 'None'; % type of test to perform
-
-options.doFiltering = false; % whether to do low-pass filtering on the GRF data
 options.doInitialFit = false; % whether to fit with max flexibility first
 
 options.doCheckFit = false; % whether to check the goodness of fit
@@ -84,13 +81,9 @@ setup.data.cutoffFreq = 10; % 15 Hz cut-off frequency for filtering
 setup.data.padding = 500; % milliseconds of padding for filtering
 setup.data.form = 'Vertical'; % data representation
 setup.data.initial = 1; % initial padding value
-setup.data.threshold1 = 0.08; % primary detection threshold 
-setup.data.threshold2 = 0.01; % secondary detection threshold
-setup.data.sustained = 100; % milliseconds for secondary threshold 
 
 setup.Fd.basisOrder = 4; % 5th order for a basis expansion of quartic splines
 setup.Fd.penaltyOrder = 2; % roughness penalty
-setup.Fd.lambda = 1E2 ; % roughness penalty
 setup.Fd.names = [{'Time (ms)'},{'Jumps'},{'GRF (BW)'}]; % axes names
 setup.Fd.tolerance = 0.001; % performance measure error tolerance
 
@@ -133,13 +126,10 @@ subjectExclusions = find( ismember( sDataID, ...
             [ 14, 39, 68, 86, 87, 11, 22, 28, 40, 43, 82, 88, 95, 97, ...
               100, 121, 156, 163, 196 ] ) );
 
-% specific jumps that should be excluded
-jumpExclusions = [3703 3113 2107 2116 0503 0507 6010 1109];
-
 [ rawData, refSet, typeSet ] =  extractVGRFData( ... 
                                     grf, bwall, nJumpsPerSubject, ...
                                     sDataID, sJumpID, jumpOrder, ...
-                                    subjectExclusions, jumpExclusions );
+                                    subjectExclusions );
 
 
 % ************************************************************************
@@ -184,11 +174,19 @@ for i = 1:nSets
        if options.doInitialFit
             % one basis function per data point
             setup.Fd.nBasis = fixLen + setup.Fd.basisOrder + 2;
-            validateSmoothing(  vgrfData{i,j}, ...
-                                tSpan{i,j}, ...
-                                setup.Fd, ...
-                                perf{i} );
-            pause;
+            disp(['Smoothing Validation: ' num2str([i j])]);
+            disp(['# Points = ' num2str(fixLen)]);
+
+            while setup.Fd.nBasis > 0
+                setup.Fd.nBasis = input('# Basis Functions = ');
+    
+                if setup.Fd.nBasis > 0
+                    validateSmoothing(  vgrfData{i,j}, ...
+                                        tSpan{i,j}, ...
+                                        setup.Fd, ...
+                                        perf{i} );
+                end
+            end
        end
        
     end
@@ -243,7 +241,7 @@ for i = 1:nSets
                                                 options );
        end      
        
-       for k = 2:nLMReg
+       for k = 1:nLMReg
 
            if isempty( isValid{i,j,k} )
                % setup reference data in case rows have to be removed

@@ -13,11 +13,12 @@
 % Output:
 %   t1: array index when jump starts
 %   t2: array index at takeoff when jump ends
+%   valid: check on validity (on VGRF minimum)
 %
 % ************************************************************************
 
 
-function [ t1, t2 ] = demarcateJump( vgrf, bw, threshold, tMinStable )
+function [ t1, t2, valid ] = demarcateJump( vgrf, bw, threshold, tMinStable )
 
 % constants
 mingrf = 10; % Newtons
@@ -31,7 +32,7 @@ end
 t2 = find( abs(vgrf) < mingrf, 1 );
 
 % normalise to bodyweights
-vgrf = (vgrf-bw)/bw;
+vgrf = smoothdata( (vgrf-bw)/bw, 'Gaussian', 21 );
 
 if plotVGRF
     % draw the VGRF curve
@@ -44,25 +45,40 @@ if plotVGRF
                 '--', 'LineWidth', 1.5, 'Color', 'k' );
     % setup the axes
     xlim([t2-2500,t2]);
-    ylim([-0.1 0.1]);
+    ylim([-0.6 0.1]);
     xlabel('Time (ms)');
     ylabel('VGRF (BW) Centred');
     grid on;
 end
 
-% find the VGRF minimum prior to takeoff than is below 0 (BW)
-[ ~, tMin ] = findpeaks( -vgrf(1:t2), ...
-                        'MinPeakHeight', -2*threshold, ...
-                        'MinPeakWidth', 20 );
-tMin = tMin( end );
+% find the VGRF minimum prior to takeoff 
+% first, find the all the minima (findpeaks finds maxima)
+[ vgrfMinima, tMinima ] = findpeaks( -vgrf(1:t2) );
+% find the global minimum, remembering to reverse sign back
+[ ~, tMinIdx ] = min( -vgrfMinima );
+tMin = tMinima( tMinIdx );
+if isempty( tMin )
+    valid = false;
+    return
+end
+if plotVGRF
+    % plot the VGRF minimum
+    plot( tMin, vgrf(tMin), 'o', 'MarkerFaceColor', 'b', ...
+                             'MarkerEdgeColor', 'r', ...
+                             'MarkerSize', 8, ...
+                             'LineWidth', 1 );
+end
 
 % work backwards to find where vGRF falls to < lower threshold
 % ensure this is a stable low period 
 t1 = tMin;
 t3 = tMin;
-while (t1-t3) < tMinStable
-    % find the next point backwards where VGRF is within 2.5% of BW
+while (t1-t3) < tMinStable && t3>1
+    % find the next point backwards where VGRF is within threshold
     t1 = find( abs(vgrf(1:t3)) < threshold, 1, 'Last' );
+    if isempty(t1)
+        t1 = 1;
+    end
 
     if plotVGRF
         % plot stability box
@@ -71,7 +87,7 @@ while (t1-t3) < tMinStable
               colours(3,:), 'FaceAlpha', 0.2, 'EdgeAlpha', 0 );
     end
     
-    % find there, find where the VGRF rises back above this threshold
+    % from there, find where the VGRF rises back above this threshold
     t3 = find( abs(vgrf(1:t1)) > threshold, 1, 'Last' );
     if isempty(t3)
         t3 = 1;
@@ -82,9 +98,15 @@ end
 if isempty(t1)
     t1 = 1;
 else
-    [~, t0] = min( abs(vgrf(t1-tMinStable+1:t1)) );
-    t1 = max( t0 + t1 - tMinStable, 1 );
-    %t1 = max( t1 - fix(0.5*tMinStable), 1 );
+    % find the last zero crossover point, nearest take-off
+    t3 = max( t1-tMinStable+1, 1 );
+    crossover = vgrf(t3:t1).*vgrf(t3+1:t1+1);
+    t0 = find( crossover < 0, 1, 'last' );
+    if isempty(t0)
+        % if it does not pass through zero, find the point nearest zero
+        [~, t0 ] = min( abs(vgrf(t3:t1)) );
+    end
+    t1 = max( t0 + t3 - 1, 1 );
 end
 
 
@@ -101,5 +123,7 @@ if plotVGRF
     pause;
 
 end
+
+valid = true;
    
 end

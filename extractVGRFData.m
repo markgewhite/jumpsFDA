@@ -24,17 +24,17 @@
 function [ curveSet, IDSet, typeSet ] =  extractVGRFData( ...
                                     grf, bwall, nJumpsPerSubject, ...
                                     sDataID, sJumpID, jumpOrder, ...
-                                    subjectExclusions, jumpExclusions )
+                                    subjectExclusions )
 
 subjectRefID = 1; % identifier for subject ID index in ref
 jumpRefID = 2; % identifier for jump ID in ref
 detectionThreshold = 0.05; % proportion of bodyweight
-tMinStable = 200; % ms - minimum period below detection threshold
+tMinStable = 250; % ms - minimum period below detection threshold
+zScoreLimit = 3; % outliers are beyond this limit
 
 newDetectionMethod = true;
 
 nSubjects = length( sDataID );
-% nSubjects = 10;
 
 nTotal = sum( nJumpsPerSubject );
 
@@ -47,28 +47,25 @@ fltTime = zeros( nTotal, 1 );
 k = 0;
 
 for i = 1:nSubjects
-
-    k0 = k;
     
     for j = 1:nJumpsPerSubject(i)
         
         jump = jumpOrder( sJumpID==sDataID(i), j );
-        jumpID = sDataID(i)*100+j;
         
         if jump{1}(1) == 'V' ...
-                && ~ismember( i, subjectExclusions ) ...
-                && ~ismember( jumpID, jumpExclusions )
-            
+                && ~ismember( i, subjectExclusions ) 
+
             if newDetectionMethod
                 % find jump initiation and jump take-off
-                [tStart, tEnd] = demarcateJump( grf.raw{i,j}, ...
+                [tStart, tEnd, valid] = demarcateJump( grf.raw{i,j}, ...
                                                 bwall(i,j), ...
                                                 detectionThreshold, ...
                                                 tMinStable );
     
                 % check validity
                 vgrfBW = grf.raw{i,j}/bwall(i,j);
-                valid = all(abs( vgrfBW(1:tStart)-1 ) < detectionThreshold);
+                valid = valid && ...
+                    all(abs( vgrfBW(1:tStart)-1 ) < detectionThreshold);
 
             else
                 % original method
@@ -91,10 +88,6 @@ for i = 1:nSubjects
 
                 fltTime( k ) = jumpFlightTime( grf.raw{i,j}, 1 );
 
-            else
-                % abort the loop; exclude subject's jumps
-                k = k0;
-                break;
             end
                 
         end
@@ -102,16 +95,33 @@ for i = 1:nSubjects
     end
 end
 
+% trim the arrays
 vgrfData = vgrfData(1:k);
 vgrfRef = vgrfRef(1:k,:);
 withArms = withArms(1:k,:);
 typErr = typErr(1:k);
 fltTime = fltTime(1:k);
 
-len = cellfun( @length, vgrfData );
+% check lengths
+len = cellfun( @length, vgrfData(1:k) );
 
 disp(['Detection Threshold = ' num2str(detectionThreshold) ' BW']);
 disp(['Min Stable Period   = ' num2str(tMinStable) ' ms']);
+
+outliers = (abs(len-mean(len)))/std(len) > 3;
+disp(['Outliers (Z-score > ' num2str(zScoreLimit) ') = ' ...
+             num2str(sum(outliers)) ' {' num2str(len(outliers)') '}']);
+disp('Excluded');
+
+% exclude outliers 
+vgrfData = vgrfData(~outliers);
+vgrfRef = vgrfRef(~outliers,:);
+withArms = withArms(~outliers,:);
+typErr = typErr(~outliers);
+fltTime = fltTime(~outliers);
+len = len(~outliers);
+
+% report
 disp(['Valid Jumps = ' num2str(k)]);
 disp(['Proportion with Arms = ' num2str(100*sum(withArms)/k, '%.0f') '%']);
 disp(['Subjects = ' num2str( length(unique(vgrfRef(:,1))) ) ]);
@@ -121,6 +131,8 @@ disp(['5th Percentile  = ' num2str( fix(prctile( len, 5 ) )) ]);
 disp(['95th Percentile = ' num2str( ceil(prctile( len, 95 ) )) ]);
 disp(['Min Duration    = ' num2str( min( len ) ) ]);
 disp(['Max Duration    = ' num2str( max( len ) ) ]);
+
+
 
 disp(['Typical VGRF Error = ' num2str(mean(typErr)) ' BW']);
 disp(['Flight Time = ' num2str(mean(fltTime), '%.0f') ' +/- ' ...
