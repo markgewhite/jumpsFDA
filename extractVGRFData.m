@@ -33,6 +33,7 @@ tMinStable = 250; % ms - minimum period below detection threshold
 zScoreLimit = 3; % outliers are beyond this limit
 
 newDetectionMethod = true;
+visualCheck = true;
 
 nSubjects = length( sDataID );
 
@@ -73,6 +74,12 @@ for i = 1:nSubjects
                 tEnd = grf.takeoff(i,j);
                 vgrfBW = grf.raw{i,j}/bwall(i,j);
                 valid = true;
+            end
+
+            if visualCheck
+                plot( vgrfBW( tStart:tEnd ) );
+                disp( [i j] );
+                pause;
             end
 
             if valid
