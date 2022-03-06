@@ -113,8 +113,8 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = fullfile(datapath,'jumpsAnalysis8.mat'); % where to save the analysis
-setup.filename2 = fullfile(datapath,'jumpsAnalysis8.mat'); % where to save the analysis
+setup.filename = fullfile(datapath,'jumpsAnalysis9.mat'); % where to save the analysis
+setup.filename2 = fullfile(datapath,'jumpsAnalysis9.mat'); % where to save the analysis
 
 
 % ************************************************************************
@@ -126,10 +126,14 @@ subjectExclusions = find( ismember( sDataID, ...
             [ 14, 39, 68, 86, 87, 11, 22, 28, 40, 43, 82, 88, 95, 97, ...
               100, 121, 156, 163, 196 ] ) );
 
+% exclude specific jumps with excessive double movements
+jumpExclusions = [  6104, 6114, 6116, 9404, 9411, 9413, 9416, ...
+                    0101, 0103, 0106, 0111, 0114 ];
+
 [ rawData, refSet, typeSet ] =  extractVGRFData( ... 
                                     grf, bwall, nJumpsPerSubject, ...
                                     sDataID, sJumpID, jumpOrder, ...
-                                    subjectExclusions );
+                                    subjectExclusions, jumpExclusions );
 
 
 % ************************************************************************
@@ -213,7 +217,7 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
-load( setup.filename );
+%load( setup.filename );
 
 % set random seed for reproducibility
 rng( setup.models.seed );

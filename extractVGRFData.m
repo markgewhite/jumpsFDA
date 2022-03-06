@@ -24,16 +24,14 @@
 function [ curveSet, IDSet, typeSet ] =  extractVGRFData( ...
                                     grf, bwall, nJumpsPerSubject, ...
                                     sDataID, sJumpID, jumpOrder, ...
-                                    subjectExclusions )
+                                    subjectExclusions, jumpExclusions )
 
-subjectRefID = 1; % identifier for subject ID index in ref
-jumpRefID = 2; % identifier for jump ID in ref
 detectionThreshold = 0.05; % proportion of bodyweight
 tMinStable = 250; % ms - minimum period below detection threshold
 zScoreLimit = 3; % outliers are beyond this limit
 
 newDetectionMethod = true;
-visualCheck = true;
+visualCheck = false;
 
 nSubjects = length( sDataID );
 
@@ -46,16 +44,19 @@ withArms = false( nTotal, 1 );
 typErr = zeros( nTotal, 1 );
 fltTime = zeros( nTotal, 1 );
 k = 0;
-
+c = 0;
 for i = 1:nSubjects
     
     for j = 1:nJumpsPerSubject(i)
         
         jump = jumpOrder( sJumpID==sDataID(i), j );
-        
-        if jump{1}(1) == 'V' ...
-                && ~ismember( i, subjectExclusions ) 
+        jumpID = sDataID(i)*100+j;
 
+        if jump{1}(1) == 'V' ...
+                && ~ismember( i, subjectExclusions ) ...
+                && ~ismember( jumpID, jumpExclusions )
+
+            c = c+1;
             if newDetectionMethod
                 % find jump initiation and jump take-off
                 [tStart, tEnd, valid] = demarcateJump( grf.raw{i,j}, ...
@@ -76,20 +77,21 @@ for i = 1:nSubjects
                 valid = true;
             end
 
-            if visualCheck
-                plot( vgrfBW( tStart:tEnd ) );
-                disp( [i j] );
-                pause;
-            end
 
             if valid
+
+                if visualCheck && i==42
+                   plot( grf.raw{i,j}( tStart:tEnd )/bwall(i,j) );
+                   disp( num2str(jumpID) );
+                   pause;
+                end
+
                 k = k+1;
             
                 % store the VGRF data in bodyweight units
-                vgrfData{ k } = vgrfBW( tStart:tEnd );
+                vgrfData{ k } = grf.raw{i,j}( tStart:tEnd )/bwall(i,j);
     
-                vgrfRef( k, subjectRefID ) = i;
-                vgrfRef( k, jumpRefID ) = j;
+                vgrfRef( k, : ) = [ i j ];
                 withArms( k ) = (length(jump{1}) == 2);
                 typErr( k ) = std( vgrfData{k}(1:100) );
 
@@ -98,6 +100,8 @@ for i = 1:nSubjects
             end
                 
         end
+
+
         
     end
 end
@@ -115,7 +119,7 @@ len = cellfun( @length, vgrfData(1:k) );
 disp(['Detection Threshold = ' num2str(detectionThreshold) ' BW']);
 disp(['Min Stable Period   = ' num2str(tMinStable) ' ms']);
 
-outliers = (abs(len-mean(len)))/std(len) > 3;
+outliers = (abs(len-mean(len)))/std(len) > 3.5;
 disp(['Outliers (Z-score > ' num2str(zScoreLimit) ') = ' ...
              num2str(sum(outliers)) ' {' num2str(len(outliers)') '}']);
 disp('Excluded');
@@ -127,6 +131,7 @@ withArms = withArms(~outliers,:);
 typErr = typErr(~outliers);
 fltTime = fltTime(~outliers);
 len = len(~outliers);
+k = k - sum(outliers);
 
 % report
 disp(['Valid Jumps = ' num2str(k)]);
