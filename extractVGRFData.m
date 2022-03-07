@@ -24,13 +24,9 @@
 function [ curveSet, IDSet, typeSet ] =  extractVGRFData( ...
                                     grf, bwall, nJumpsPerSubject, ...
                                     sDataID, sJumpID, jumpOrder, ...
-                                    subjectExclusions, jumpExclusions )
+                                    subjectExclusions, jumpExclusions, ...
+                                    setup )
 
-detectionThreshold = 0.05; % proportion of bodyweight
-tMinStable = 250; % ms - minimum period below detection threshold
-zScoreLimit = 3; % outliers are beyond this limit
-
-newDetectionMethod = true;
 visualCheck = false;
 
 nSubjects = length( sDataID );
@@ -57,26 +53,11 @@ for i = 1:nSubjects
                 && ~ismember( jumpID, jumpExclusions )
 
             c = c+1;
-            if newDetectionMethod
-                % find jump initiation and jump take-off
-                [tStart, tEnd, valid] = demarcateJump( grf.raw{i,j}, ...
-                                                bwall(i,j), ...
-                                                detectionThreshold, ...
-                                                tMinStable );
-    
-                % check validity
-                vgrfBW = grf.raw{i,j}/bwall(i,j);
-                valid = valid && ...
-                    all(abs( vgrfBW(1:tStart)-1 ) < detectionThreshold);
-
-            else
-                % original method
-                tStart = grf.initiation(i,j);
-                tEnd = grf.takeoff(i,j);
-                vgrfBW = grf.raw{i,j}/bwall(i,j);
-                valid = true;
-            end
-
+            % find jump initiation and jump take-off
+            [tStart, tEnd, valid] = demarcateJump( grf.raw{i,j}, ...
+                                            bwall(i,j), ...
+                                            setup.threshold1, ...
+                                            setup.threshold2 );
 
             if valid
 
@@ -116,12 +97,17 @@ fltTime = fltTime(1:k);
 % check lengths
 len = cellfun( @length, vgrfData(1:k) );
 
-disp(['Detection Threshold = ' num2str(detectionThreshold) ' BW']);
-disp(['Min Stable Period   = ' num2str(tMinStable) ' ms']);
+disp(['Initial Detection Threshold = ' num2str(setup.threshold1) ' BW']);
+disp(['Sustained Low Threshold = ' num2str(setup.threshold2) ' BW']);
+disp(['Median = ' num2str( median( len ) ) ]);
+disp([ num2str(100-setup.prctileLimit) 'th Percentile = ' ...
+               num2str(prctile( len, 100-setup.prctileLimit )) ]);
+disp([ num2str(setup.prctileLimit) 'th Percentile = ' ...
+               num2str(prctile( len, setup.prctileLimit )) ]);
 
-outliers = (abs(len-mean(len)))/std(len) > 3.5;
-disp(['Outliers (Z-score > ' num2str(zScoreLimit) ') = ' ...
-             num2str(sum(outliers)) ' {' num2str(len(outliers)') '}']);
+
+outliers = len > prctile( len, setup.prctileLimit );
+disp(['# Outliers  = ' num2str(sum(outliers)) ' {' num2str(len(outliers)') '}']);
 disp('Excluded');
 
 % exclude outliers 

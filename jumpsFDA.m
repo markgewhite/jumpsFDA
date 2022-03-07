@@ -76,11 +76,10 @@ options.reg.doRemoveFaulty = true; % whether to remove faulty registrations
 % ************************************************************************
 
 setup.data.tFreq = 1; % time intervals per second
-setup.data.sampleFreq = 1000; % sampling frequency
-setup.data.cutoffFreq = 10; % 15 Hz cut-off frequency for filtering
-setup.data.padding = 500; % milliseconds of padding for filtering
-setup.data.form = 'Vertical'; % data representation
 setup.data.initial = 1; % initial padding value
+setup.data.threshold1 = 0.08; % fraction of BW for first detection
+setup.data.threshold2 = 0.025; % fraction of BW for sustained low threshold
+setup.data.prctileLimit = 90; % no outliers are beyond this limit
 
 setup.Fd.basisOrder = 4; % 5th order for a basis expansion of quartic splines
 setup.Fd.penaltyOrder = 2; % roughness penalty
@@ -113,8 +112,8 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = fullfile(datapath,'jumpsAnalysis9.mat'); % where to save the analysis
-setup.filename2 = fullfile(datapath,'jumpsAnalysis9.mat'); % where to save the analysis
+setup.filename = fullfile(datapath,'jumpsAnalysis9A.mat'); % where to save the analysis
+setup.filename2 = fullfile(datapath,'jumpsAnalysis9A.mat'); % where to save the analysis
 
 
 % ************************************************************************
@@ -127,13 +126,20 @@ subjectExclusions = find( ismember( sDataID, ...
               100, 121, 156, 163, 196 ] ) );
 
 % exclude specific jumps with excessive double movements
-jumpExclusions = [  6104, 6114, 6116, 9404, 9411, 9413, 9416, ...
+jumpExclusions = [  5807, 5812, 5813, 5814, 5815, ...
+                    7903, 7905, ...
+                    6104, 6114, 6116, ...
+                    9404, 9411, 9413, 9416, ...
+                    0101, 0103, 0106, 0111, 0114 ];
+jumpExclusions = [  6104, 6114, 6116, ...
+                    9404, 9411, 9413, 9416, ...
                     0101, 0103, 0106, 0111, 0114 ];
 
 [ rawData, refSet, typeSet ] =  extractVGRFData( ... 
                                     grf, bwall, nJumpsPerSubject, ...
                                     sDataID, sJumpID, jumpOrder, ...
-                                    subjectExclusions, jumpExclusions );
+                                    subjectExclusions, jumpExclusions, ...
+                                    setup.data );
 
 
 % ************************************************************************
