@@ -133,9 +133,6 @@ for i = 1:length(ax)
 end
 
 
-% finalise
-finalisePlot( figObj, [-400 400] );
-
 end
 
 

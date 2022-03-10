@@ -61,12 +61,10 @@ switch type
 
         % get predictions
         preds = predict( metaModel, inputTbl );
-        % relative to reference model
-        preds = preds-preds(1);
         
         % setup prediction table
         predTbl = array2table( reshape( preds, 4, 2 ) );
-        predTbl.Properties.VariableNames = ["Unrotated" "Varimax"];
+        predTbl.Properties.VariableNames = ["PAD" "LTN"];
         predTbl.Properties.RowNames = ["PCAU" "PCAV" "ACPU" "ACPV"];
 
 
@@ -103,8 +101,6 @@ switch type
 
         % get predictions
         preds = predict( metaModel, inputTbl );
-        % relative to reference model
-        preds = preds-preds(1);
 
         % setup prediction table
         predTbl = array2table( reshape( preds, 4, 16 ) );

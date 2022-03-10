@@ -77,6 +77,7 @@ metaPP = fitModel( mdlPP, type, 'Outcome' );
 
 mdlCL = mdlClassification;
 mdlCL.Model = [];
+mdlCL.Outcome = 1 - mdlCL.Outcome; % switch from accuracy to error
 disp('Fitting classification meta model:');
 metaCL = fitModel( mdlCL, type, 'Outcome' );
 
