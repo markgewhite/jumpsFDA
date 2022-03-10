@@ -15,7 +15,9 @@ function [ fig1, fig2 ] = plotCurves( vgrfFd, warpFd )
 
 % plot the VGRF curves
 fig1 = figure;
-fig1.Position(3) = fig1.Position(3)*1.5;
+fig1.Units = 'centimeters';
+fig1.Position(3) = 18.0;
+fig1.Position(4) = 10.0;
 
 ax = subplot( 2, 3, 1 );
 fd = vgrfFd{ 1, 1, 1, 1 }; % WOA-PAD0000-
@@ -50,7 +52,9 @@ title( ax, 'LTN0010C' );
 
 % plot the warp curves
 fig2 = figure;
-fig2.Position(3) = fig2.Position(3)*1.5;
+fig2.Units = 'centimeters';
+fig2.Position(3) = 18.0;
+fig2.Position(4) = 5.0;
 
 ax = subplot( 1, 4, 1 );
 fd = warpFd{ 1, 1, 3, 1 }; % WOA-PAD0010- warp
@@ -128,9 +132,11 @@ if showLabel(2)
         ylabel( ax, 'VGRF (BW)' );
         ax.YAxis.TickLabelFormat = '%.1f';
         ax.YAxis.Label.Units = 'normalized';
-        ax.YAxis.Label.Position(1) = -0.18;
+        ax.YAxis.Label.Position(1) = -0.20;
     else
         ylabel( ax, 'Warp Time (ms)' );
+        ax.YAxis.Label.Units = 'normalized';
+        ax.YAxis.Label.Position(1) = -0.30;
     end
 end
 
@@ -138,7 +144,7 @@ ax.TickDir = 'out';
 ax.FontName = 'Arial';
 ax.FontSize = 8;
 
-text( ax, -0.1, 1.1, ['(' char(64+p) ')'], ...
+text( ax, -0.25, 1.15, ['(' char(64+p) ')'], ...
         'Units', 'normalized', 'FontSize', 9 );
 
 end

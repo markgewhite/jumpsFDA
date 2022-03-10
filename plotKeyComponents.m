@@ -11,7 +11,7 @@
 %
 % ************************************************************************
 
-function figObj = plotKeyComponents( vgrfPCA, models )
+function figObj = plotKeyComponents( vgrfPCA )
 
 figObj = figure;
 figObj.Position(2) = figObj.Position(2)-figObj.Position(4);

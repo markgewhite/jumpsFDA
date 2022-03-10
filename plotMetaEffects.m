@@ -96,14 +96,17 @@ for i = 1:nModels
     if i==nModels
         xlabel( ax(i), ordinate );
     end
+    
+    % add letter reference
+    text( ax(i), -0.1, 1.1, ['(' char(64+i) ')'], ...
+                 'Units', 'normalized' );
 
     % finalise
     set( ax(i), 'YGrid', 'on' );
     set( ax(i), 'FontName', 'Arial' );
     set( ax(i), 'FontSize', 9 );
     set( ax(i), 'Box', false );
-    set( ax(i), 'TickDir', 'out' );
-    
+    set( ax(i), 'TickDir', 'out' );    
 
 end
 

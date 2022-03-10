@@ -20,11 +20,11 @@ lightRed = [0.9290 0.6940 0.1250];
 xCol1 = 55;
 xCol2 = 90;
 xOffset = 4;
-fontSize = 8;
+fontSize = 7;
 
-labelsShown = {'LTN1110C', 'LTN1100C', 'PAD0001C', 'PAD0000C', ...
-                'PAD1110-', 'LTN1110-', 'PAD0001-', 'LTN1000-', ...
-                'LTN1111C', 'LTN0001-', 'LTN1111-' };
+labelsShown = { 'LTN1100C', 'PAD0001C', 'PAD0000C', ...
+                'PAD1110-', 'PAD0001-', 'LTN1000-', ...
+                'LTN0001-', 'PAD1110C' };
 
 % create the data set
 n = numel( decomp )/2-2;
@@ -51,6 +51,10 @@ for j = 1:2 % PAD & LTN
 end
 
 fig = figure;
+fig.Units = 'centimeters';
+fig.Position(3) = 9.0;
+fig.Position(4) = 8.0;
+
 ax = gca;
 hold( ax, 'on' );
 for i = 1:n

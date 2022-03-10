@@ -21,7 +21,7 @@ function plotRef = plotComponent( ax, i, pca, coeff, name, showLabels  )
 pca = pca.unrotated; 
 
 % do calculations
-tSpan = -1100:10:0;
+tSpan = -950:10:0;
 
 % obtain the mean and the time-varying adjustment for the component
 y0 = eval_fd( tSpan, pca.meanfd );
