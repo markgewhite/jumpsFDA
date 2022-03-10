@@ -41,14 +41,18 @@ end
 
 switch type
     case 'Features'
-        nRows = nModels;
-        nextModelFcn = @(m) m;
+        width = 9.0;
+        height = 10.0;
         legendFcn = @(s) [s(1:3) '(' s(4) ')'];
+        legendLoc = 'northwest';
+        legendCols = 1;
         ordinate = 'Length Normalisation';
     case 'Regs'
-        nRows = 2*nModels;
-        nextModelFcn = @(m) fix((m+1)/2);
+        width = 19.0;
+        height = 12.0;
         legendFcn = @(s) [s(1:7) '(' s(8) ')'];
+        legendLoc = 'north';
+        legendCols = 4;
         ordinate = 'Landmark Registration';
 end
 
@@ -62,44 +66,39 @@ end
 
 % setup figure
 figObj = figure;
-ax = gobjects( nRows, 1 );
-barObj = gobjects( nRows, 4 );
+figObj.Units = 'centimeters';
+figObj.Position(3) = width;
+figObj.Position(4) = height;
 
-for i = 1:nRows
+ax = gobjects( nModels, 1 );
+barObj = gobjects( nModels, 4 );
+
+for i = 1:nModels
 
     % get meta model predictions
-    m = nextModelFcn( i );
-    preds = metaModelPredictions( metaModels{m}, type );
+    preds = metaModelPredictions( metaModels{i}, type );
 
-    % prepare data for bar chart
-    switch type
-        case 'Features'
-            v1 = 1;
-            v2 = 4;
-        case 'Regs'
-            h = mod(i-1,2);
-            v1 = 8*h+1;
-            v2 = 8*(h+1);
-    end
-
-    vNames = preds.Properties.VariableNames(v1:v2);
+    vNames = preds.Properties.VariableNames;
     x = categorical( vNames, vNames, 'Ordinal', true );
     y = scaling*table2array(preds)';
-    y = y(v1:v2, :);
     z = preds.Properties.RowNames;
     z = cellfun( legendFcn, z, 'UniformOutput', false );
     
     % draw bar chart
-    ax(i) = subplot( nRows, 1, i);
+    ax(i) = subplot( nModels, 1, i);
     barObj(i,:) = bar(  ax(i), x, y );
-    ylabel( ax(i), units(m) );
+    ylabel( ax(i), units(i) );
     if i==1
+        legend( ax(i), z, 'Location', legendLoc );
+        ax(i).Legend.NumColumns = legendCols;
+        ax(i).Legend.Position(2) = 0.95;
+    end
+    if i==nModels
         xlabel( ax(i), ordinate );
-        legend( ax(i), z, 'Location', 'northwest', ...
-                          'Orientation', 'horizontal' );
     end
 
     % finalise
+    set( ax(i), 'YGrid', 'on' );
     set( ax(i), 'FontName', 'Arial' );
     set( ax(i), 'FontSize', 9 );
     set( ax(i), 'Box', false );
