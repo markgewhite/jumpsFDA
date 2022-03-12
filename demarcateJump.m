@@ -30,7 +30,7 @@ if plotVGRF
     colours = lines(7);
 end
 
-% find take-off - the end demarcation pointv
+% find take-off - the demarcation end point
 t2 = find( abs(vgrf) < mingrf, 1 );
 
 % normalise to bodyweights
