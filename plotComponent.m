@@ -21,7 +21,7 @@ function plotRef = plotComponent( ax, i, pca, coeff, name, showLabels  )
 pca = pca.unrotated; 
 
 % do calculations
-tSpan = -950:10:0;
+tSpan = -1000:5:0;
 
 % obtain the mean and the time-varying adjustment for the component
 y0 = eval_fd( tSpan, pca.meanfd );
@@ -50,9 +50,8 @@ plot( ax, tSpan, yMinus, 'b' );
 
 hold( ax, 'off' );
     
-xlim( ax, [-1100 0] );
-ytickformat( ax, '%.1f' );
 
+ytickformat( ax, '%.1f' );
 title( ax, [name(1:3) ' FPC' num2str(i)], ...
         'FontSize', 9, 'FontWeight', 'normal' );
 

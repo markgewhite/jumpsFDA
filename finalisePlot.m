@@ -30,8 +30,8 @@ for i = length(ax):-1:1 % reverse order
                 labelX = -0.25;
                 labelY = 1.15;
             else
-                labelX = -0.10;
-                labelY = 1.20;
+                labelX = -0.20;
+                labelY = 1.15;
             end
     
             p = p+1;
@@ -40,10 +40,16 @@ for i = length(ax):-1:1 % reverse order
                         'FontName', 'Arial', ...
                         'FontSize', 9 );
 
-            set( ax(i), 'FontName', 'Arial' );
-            set( ax(i), 'FontSize', 8 );
-            set( ax(i), 'Box', false );
-            set( ax(i), 'TickDir', 'out' );
+            ax(i).XLabel.Units = 'normalized';
+            ax(i).XLabel.Position(2) = -0.22;
+
+            ax(i).YLabel.Units = 'normalized';
+            ax(i).YLabel.Position(1) = -0.12;
+
+            ax(i).FontName = 'Arial';
+            ax(i).FontSize = 8;
+            ax(i).Box = false;
+            ax(i).TickDir = 'out';
             
             
         case 'matlab.graphics.illustration.Legend'

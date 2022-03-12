@@ -14,9 +14,9 @@
 function figObj = plotKeyComponents( vgrfPCA )
 
 figObj = figure;
-figObj.Position(2) = figObj.Position(2)-figObj.Position(4);
-figObj.Position(3) = figObj.Position(3)*1.5;
-figObj.Position(4) = figObj.Position(4)*2;
+figObj.Units = 'centimeters';
+figObj.Position(3) = 16.0;
+figObj.Position(4) = 18.0;
 
 % constants
 woaID = 1;
@@ -58,18 +58,6 @@ axes = 2:2:8;
 % display legend
 lgd = legend( ax(2), plotRef, 'Location', 'northwest' );
 lgl.Box = 'off';     
-                    
-% sort out size and positioning
-%for i = 1:length(ax)
-%    subPos = ax(i).Position;
-%    vOffset = 0.01*(nCols-ceil(i/nCols));
-%    ax(i).Position = [ subPos(1) subPos(2)+vOffset ...
-%                                    subPos(3) subPos(4)-0.05 ];
-%    ax(i).XAxis.Label.Units = 'normalized';
-%    ax(i).YAxis.Label.Units = 'normalized';
-%    ax(i).XAxis.Label.Position(2) = -0.25;
-%    ax(i).YAxis.Label.Position(1) = -0.3;
-%end
                     
 % finalise plot
 finalisePlot( figObj, [0 2.5], 'northwest' );

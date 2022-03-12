@@ -23,7 +23,7 @@ function plotRef = plotComponentOverlay( ax, i, pca, coeff, name, lineSpec )
 pca = pca.unrotated; 
 
 % do calculations
-tSpan = -1100:10:0;
+tSpan = -1000:5:0;
 
 % obtain the mean and the time-varying adjustment for the component
 y0 = eval_fd( tSpan, pca.meanfd );
