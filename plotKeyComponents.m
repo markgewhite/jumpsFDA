@@ -48,13 +48,13 @@ lgl.Box = 'off';
 % plot first four unregistered PAD components down right hand column
 axes = 2:2:8;
 [ ax(axes), plotRef(1:2) ] = plotFPCSet( [], nRows, nCols, axes, ...
-                    'LTN0000-', coeff, vgrfPCA{ woaID, ltnID, 1, 1 } );
+                    'LTN0001-', coeff, vgrfPCA{ woaID, ltnID, 1, 1 } );
 % plot 0001- overlay
 [ ~, plotRef(3) ] = plotFPCSet( ax(axes), nRows, nCols, axes, ...
-                'LTN0001-', coeff, vgrfPCA{ woaID, ltnID, 2, 1 }, 'k-' );
+                'LTN0010-', coeff, vgrfPCA{ woaID, ltnID, 2, 1 }, 'k-' );
 % plot 0010- overlay
 [ ~, plotRef(4) ] = plotFPCSet( ax(axes), nRows, nCols, axes, ...
-                'LTN0010-', coeff, vgrfPCA{ woaID, ltnID, 3, 1 }, 'r-' );  
+                'LTN0011-', coeff, vgrfPCA{ woaID, ltnID, 3, 1 }, 'r-' );  
 % display legend
 lgd = legend( ax(2), plotRef, 'Location', 'northwest' );
 lgl.Box = 'off';     
