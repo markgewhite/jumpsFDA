@@ -1,79 +1,106 @@
 % ************************************************************************
 % Function: plotCoeffRSq
 % Purpose:  Create a panel plot of explained variance by coefficient
+%           with PAD models on the left and LTN models on the right
+%           for the outcome variables specified
 %
 % Parameters:
 %       models : cell array of model output structures
+%       outcomeVars : string array of outcome variables to present
+%                     ["JHtov", "JHwd", "PP", "CL"]
 %
 % Outputs:
 %       one figure
 %
 % ************************************************************************
 
-function fig = plotCoeffRSq( models )
+function fig = plotCoeffRSq( models, outcomeVars )
 
-% compile table to work with
-T = compileResults( models, 'coeffRSq' );
+% compile table of coefficients to work with
+C = compileResults( models, 'coeffRSq' );
+
+% compile table of model performances 
+P = compileResults( models, 'perf' );
+% reverse accuracy to make lowest the best
+P.TrainAccuracy = -P.TrainAccuracy;
+P.TestAccuracy = -P.TestAccuracy;
 
 % create categories
-T.Model = categorical( T.Model );
-T.PredictorSet = categorical( T.PredictorSet );
+C.Model = categorical( C.Model );
+C.PredictorSet = categorical( C.PredictorSet );
 
-usedPAD = extract( T.Dataset, 3 )=='1';
-T.Norm( usedPAD ) = "PAD";
-T.Norm( ~usedPAD ) = "LTN";
-T.Norm = categorical( T.Norm );
+usedPAD = extract( C.Dataset, 3 )=='1';
+C.Norm( usedPAD ) = "PAD";
+C.Norm( ~usedPAD ) = "LTN";
+C.Norm = categorical( C.Norm );
 
-T.Dataset = categorical( T.Dataset );
+C.Dataset = categorical( C.Dataset );
 
-% retain a subset
-retain1 = T.Model=='JHtov' | T.Model=='PP' | T.Model=='jumpType';
-retain2 = T.PredictorSet=='PCAU';
-T = T( retain1 & retain2, : );
+
+
+% retain the unrotated PCA subset
+retain = C.PredictorSet=='PCAU';
+C = C( retain, : );
+P = P( retain, : );
+
+% determine how many plots
+nVars = length( outcomeVars );
 
 % create figure
 fig = figure;
-fig.Position(2) = fig.Position(2) - fig.Position(4)*0.5;
-fig.Position(3) = fig.Position(3)*1.75;
-fig.Position(4) = fig.Position(4)*1.5;
+fig.Units = 'centimeters';
+fig.Position(3) = 18.0; % width
+fig.Position(4) = 2.0 + 6*nVars; % height
 
-% JH-PAD panel 
-ax = subplot( 3, 2, 1 );
-subset = (T.Model=='JHtov' & T.Norm=='PAD');
-plotRSqBoxPlot( ax, T( subset, : ), "1-1VGRF0001-", 50, [false true] );
-title( ax, 'JH: PAD' );
+% iterate through outcome variables
+for i = 1:nVars
 
-% JH-LTN panel 
-ax = subplot( 3, 2, 2 );
-subset = (T.Model=='JHtov' & T.Norm=='LTN');
-plotRSqBoxPlot( ax, T( subset, : ), "1-2VGRF0001-", 50, [false false] );
-title( ax, 'JH: LTN' );
+    % identify the appropriate error field and y-limit
+    switch outcomeVars(i)
+        case {"JHtov", "JHwd"}
+            errFld = 9;
+            yMax = 50;
+            name = "Jump Height";
+        case "PP"
+            errFld = 9;
+            yMax = 70;
+            name = "Peak Power";
+        case "jumpType"
+            errFld = 11;
+            yMax = 30;
+            name = "Classification";
+    end
 
-% PP-PAD panel 
-ax = subplot( 3, 2, 3 );
-subset = (T.Model=='PP' & T.Norm=='PAD');
-plotRSqBoxPlot( ax, T( subset, : ), "1-1VGRF0000-", 70, [false true] );
-title( ax, 'PP: PAD' );
+    % work with the PAD dataset for this outcome variable
+    subset = (C.Model==outcomeVars(i) & C.Norm=='PAD');
+    % find the best model
+    [~, bestIdx ] = min( table2array(P( subset, errFld )) );
+    datasets = P.Dataset( subset );
+    bestDataset = datasets( bestIdx );
+    
+    % display the plot
+    ax = subplot( nVars, 2, i*2-1 );
+    plotRSqBoxPlot( ax, C( subset, : ), bestDataset, yMax, [i==nVars true] );
+    title( ax, strcat( name, ": PAD") );
+    text( ax, -0.2, 1.1, ['(' char(64+i*2-1) ')'], 'Units', 'normalized' );
 
-% PP-LTN panel 
-ax = subplot( 3, 2, 4 );
-subset = (T.Model=='PP' & T.Norm=='LTN');
-plotRSqBoxPlot( ax, T( subset, : ), "1-2VGRF0000-", 70, [false false] );
-title( ax, 'PP: LTN' );
-
-% CL-PAD panel 
-ax = subplot( 3, 2, 5 );
-subset = (T.Model=='jumpType' & T.Norm=='PAD');
-plotRSqBoxPlot( ax, T( subset, : ), "2-1VGRF0010-", 40, [true true] );
-title( ax, 'CL: PAD' );
-
-% CL-LTN panel 
-ax = subplot( 3, 2, 6 );
-subset = (T.Model=='jumpType' & T.Norm=='LTN');
-plotRSqBoxPlot( ax, T( subset, : ), "2-2VGRF0010-", 40, [true false] );
-title( ax, 'CL: LTN' );
+    % work with the LTN dataset for this outcome variable
+    subset = (C.Model==outcomeVars(i) & C.Norm=='LTN');
+    % find the best model
+    [~, bestIdx ] = min( table2array(P( subset, errFld )) );
+    datasets = P.Dataset( subset );
+    bestDataset = datasets( bestIdx );
+    
+    % display the plot
+    ax = subplot( nVars, 2, i*2 );
+    plotRSqBoxPlot( ax, C( subset, : ), bestDataset, yMax, [i==nVars false] );
+    title( ax, strcat( name, ": LTN") );
+    text( ax, -0.2, 1.1, ['(' char(64+i*2) ')'], 'Units', 'normalized' );
 
 end
+
+end
+
 
 function plotRSqBoxPlot( ax, data, best, yMax, showLabels )
 
@@ -114,7 +141,7 @@ if showLabels(1)
     xlabel( ax, 'Model Predictors' );
 end
 if showLabels(2)
-    ylabel( ax, 'Expl Var, \DeltaR^{2} (%)' );
+    ylabel( ax, 'Expl Variance, \DeltaR^{2} (%)' );
 end
 
 end
