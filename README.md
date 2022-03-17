@@ -22,7 +22,8 @@ The analysis is run by jumpsFDA.m. The main loop iterates through the following 
 
 jumpsFDA.m runs the full analysis, using a raw datafile that is not available yet - see below. 
 
-jumpsFDA.m outputs a Matlab data file containing:
+jumpsFDA.m outputs a Matlab data file: results/jumpsAnalysis.mat
+It contains the following:
 - decomp (2x2x16x2 cell array) amplitude/phase decomposition  
 - fdPar (2x2 cell array) FDA smoothing parameters, dataset by length standardisation
 - isValid (2x2x16 cell array) logical array indicating valid registrations
@@ -34,7 +35,8 @@ jumpsFDA.m outputs a Matlab data file containing:
 - vgrfPCA (2x2x16x2 cell array) structures holding the functional PCA, unrotated and varimax
 - warpFd (2x2x16x2 cell array) functional data objects for the time-warp curves
 
-The 4D arrays has this structure
+
+The 4D arrays have this structure:
 - 2 datasets:CMJ_NA & CMJ_A 
 - 2 length standardisations: PAD & LTN
 - 16 landmark registration: 0000-1111
@@ -52,4 +54,26 @@ jumpsFDA.m reads the raw datafile, 'compactjumpsdata.mat', which contains anonym
 - sJumpID: 1x104 double (lookup table linking trial index to jump order ID)
 
 
-Other files are dedicated to generating plots of the results.
+Other files are dedicated to generating plots of the results. The paper focused on jump height (take-off velocity) and classification. However, models were also produced for jump height (work done) and peak power.
+
+First, load the results file:
+
+load( 'results/jumpsAnalysis.mat' )
+
+
+[fig1, fig2 ] = plotCurves( vgrfFd, warpFd )
+
+fig3 = plotDecompScatter( decomp )
+
+fig4 = plotKeyComponents( vgrfPCA )
+
+fig5 = fig = plotCoeffRSq( models, ["JHtov" "jumpType"] );
+
+
+Or, alternatively:
+
+fig5 = plotCoeffRSq( models, ["JHwd" "PP"] );
+
+
+
+
