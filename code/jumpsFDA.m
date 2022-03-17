@@ -8,31 +8,16 @@
 clear;
 
 % ************************************************************************
-%     Setup file paths
-% ************************************************************************
-
-if ismac
-    rootpath = '/Users/markgewhite/Google Drive/PhD/Studies/Jumps';
-else
-    rootpath = 'C:\Users\markg\Google Drive\PhD\Studies\Jumps';
-    rootpath = 'C:\Users\m.g.e.white\My Drive\PhD\Studies\Jumps';
-end
-
-datapath = [ rootpath '\Data\Processed\Training' ];
-
-if ismac
-    datapath = strrep( datapath, '\', '/') ;
-end
-
-
-% ************************************************************************
 %   Read data file
 % ************************************************************************
 
-cd(datapath);
+% get the repository's code path
+path = fileparts( which('jumpsFDA.m') );
+path = [path '/../'];
+cd(path);
 
 % read the processed data file
-load(fullfile(datapath,'compactjumpdata.mat'));
+load( 'data/compactjumpdata.mat' );
 
 
 % ************************************************************************
@@ -112,7 +97,7 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = fullfile(datapath,'jumpsAnalysis9A.mat'); % where to save the analysis
+setup.filename = 'results/jumpsAnalysis-test.mat'; % where to save the analysis
 
 
 % ************************************************************************
