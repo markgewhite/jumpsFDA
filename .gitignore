@@ -1,5 +1,5 @@
 *.asv
+*.mat
 data/*
-results/jumpsAnalysis-test.mat
 
 

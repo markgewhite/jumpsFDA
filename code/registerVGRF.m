@@ -18,7 +18,6 @@ function [ XFdReg, warpFd ] = registerVGRF( t, XFd, type, setup, warpFd0 )
 
 % initialise
 monotonic = true;
-nProcrustes = setup.nIterations;
 N = size( getcoef( XFd ), 2 );
 
 XFdReg = XFd;
@@ -30,7 +29,9 @@ else
 end
 
 % use a Procustes style loop
-for i = 1:nProcrustes   
+hasConverged = false;
+prevRSq = 0;
+while ~hasConverged   
     
     switch type
         
@@ -59,13 +60,6 @@ for i = 1:nProcrustes
             [ XFdReg, warpFd ] = landmarkreg( ...
                                         XFdReg, lm.case, lm.mean, ...
                                         wFdRegPar, monotonic, setup.XLambda );
-                                    
-            if i == nProcrustes
-                % final iteration
-                lm = findGRFlandmarks( t, XFdReg, setup.lm );
-                disp(['Landmark means  = ' num2str( lm.mean )]);
-                disp(['Landmark SDs    = ' num2str( std( lm.case ) )]);
-            end
             
                                 
         case 'Continuous'
@@ -98,9 +92,28 @@ for i = 1:nProcrustes
         % impose limits in case of over/underflow
         warpT(:,j) = max( min( warpT(:,j), t(end) ), t(1) );
     end
-    warpFd = smooth_basis( t, warpT, wFdRegPar );
-        
+
+    % re-smooth the warping curve using a more extensive basis
+    % without landmarks
+    wBasis = create_bspline_basis( [t(1),t(end)], ...
+                                               4*setup.nBasis, ...
+                                               setup.basisOrder ); 
+    wFdPar = fdPar( wBasis, 1, setup.wLambda );
+    warpFd = smooth_basis( t, warpT, wFdPar );
+    
+    % check on progress
+    decomp = regDecomp( XFd, XFdReg, warpFd );
+
+    hasConverged = (abs(decomp.rSq-prevRSq) < setup.convCriterion);
+
+    prevRSq = decomp.rSq;
+
 end
 
+if strcmp( type, 'Landmark' )
+    lm = findGRFlandmarks( t, XFdReg, setup.lm );
+    disp(['Landmark means  = ' num2str( lm.mean )]);
+    disp(['Landmark SDs    = ' num2str( std( lm.case ) )]);
+end
 
 end

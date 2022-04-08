@@ -71,11 +71,11 @@ setup.Fd.penaltyOrder = 2; % roughness penalty
 setup.Fd.names = [{'Time (ms)'},{'Jumps'},{'GRF (BW)'}]; % axes names
 setup.Fd.tolerance = 0.001; % performance measure error tolerance
 
-setup.reg.nIterations = 2; % Procrustes iterations
-setup.reg.nBasis = 10; % numbers of bases for registration
+setup.reg.nBasis = 13; % numbers of bases for registration
 setup.reg.basisOrder = 3; % time warping basis order for registration
-setup.reg.wLambda = 1E-2; % roughness penalty for time warp 1E-2
+setup.reg.wLambda = 1E0; % roughness penalty for time warp 1E-2
 setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
+setup.reg.convCriterion = 0.01; % change is R squared
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
@@ -97,7 +97,7 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = 'results/jumpsAnalysis-test.mat'; % where to save the analysis
+setup.filename = 'results/jumpsAnalysis.mat'; % where to save the analysis
 
 
 % ************************************************************************
