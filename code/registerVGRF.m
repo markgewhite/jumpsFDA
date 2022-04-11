@@ -10,11 +10,13 @@
 %
 % Output:
 %       XFdReg: registered smoothed curves
+%       warpFd: time warping curves
+%       i: number of iterations performed
 %
 % ************************************************************************
 
 
-function [ XFdReg, warpFd ] = registerVGRF( t, XFd, type, setup, warpFd0 )
+function [ validXFdReg, validWarpFd, i ] = registerVGRF( t, XFd, type, setup, warpFd0 )
 
 % initialise
 monotonic = true;
@@ -30,8 +32,9 @@ end
 
 % use a Procustes style loop
 hasConverged = false;
-prevRSq = 0;
-while ~hasConverged   
+prevC = 1;
+i = 0;
+while ~hasConverged && i < setup.maxIterations 
     
     switch type
         
@@ -94,24 +97,41 @@ while ~hasConverged
     end
 
     % re-smooth the warping curve using a more extensive basis
-    % without landmarks
-    wBasis = create_bspline_basis( [t(1),t(end)], ...
-                                               4*setup.nBasis, ...
-                                               setup.basisOrder ); 
-    wFdPar = fdPar( wBasis, 1, setup.wLambda );
-    warpFd = smooth_basis( t, warpT, wFdPar );
+    % without landmarks with a minimal roughness penalty to 
+    % ensure the closest adherence to the interpolated points
+    % find the number of minimal number of basis functions required 
+    % to maintain monotocity
+    b = setup.basisOrder;
+    monotonic = false;
+    while ~monotonic && b <= setup.maxNBasis
+        b = b + 10;
+        wBasis = create_bspline_basis( [t(1),t(end)], b, setup.basisOrder ); 
+        wFdPar = fdPar( wBasis, 1, 1E-10 );
+        warpFd = smooth_basis( t, warpT, wFdPar );
     
+        warpDT = eval_fd( t, warpFd, 1 ); 
+        monotonic = all( warpDT>=0, 'all' );
+    end
+
+    if monotonic
+        validWarpFd = warpFd;
+        validXFdReg = XFdReg;
+    else
+        disp('Warp functions not universally monotonic - reverting to previous version.');
+    end
+
     % check on progress
-    decomp = regDecomp( XFd, XFdReg, warpFd );
+    decomp = regDecomp( XFd, validXFdReg, validWarpFd );
+    hasConverged = (abs(prevC-decomp.c) < setup.convCriterion) ...
+                    || ~monotonic;
 
-    hasConverged = (abs(decomp.rSq-prevRSq) < setup.convCriterion);
-
-    prevRSq = decomp.rSq;
+    prevC = decomp.c;
+    i = i + 1;
 
 end
 
 if strcmp( type, 'Landmark' )
-    lm = findGRFlandmarks( t, XFdReg, setup.lm );
+    lm = findGRFlandmarks( t, validXFdReg, setup.lm );
     disp(['Landmark means  = ' num2str( lm.mean )]);
     disp(['Landmark SDs    = ' num2str( std( lm.case ) )]);
 end

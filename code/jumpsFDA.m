@@ -72,10 +72,12 @@ setup.Fd.names = [{'Time (ms)'},{'Jumps'},{'GRF (BW)'}]; % axes names
 setup.Fd.tolerance = 0.001; % performance measure error tolerance
 
 setup.reg.nBasis = 13; % numbers of bases for registration
+setup.reg.maxNBasis = 200; % maximum permissible basis functions for re-smoothing
 setup.reg.basisOrder = 3; % time warping basis order for registration
-setup.reg.wLambda = 1E0; % roughness penalty for time warp 1E-2
+setup.reg.wLambda = 1E-2; % roughness penalty for time warp 1E-2
 setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
-setup.reg.convCriterion = 0.01; % change is R squared
+setup.reg.convCriterion = 0.001; % smallest change in C 
+setup.reg.maxIterations = 4; % maximum iterations to prevent infinite loop
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
@@ -88,7 +90,7 @@ setup.reg.faultZScore = 3.5; % fault threshold
 setup.pca.nComp = 15; % number of PCA components to be retained
 setup.pca.nCompWarp = 5; % number of PCA components to be retained
 
-setup.models.nRepeats = 1; % number of repetitions of CV
+setup.models.nRepeats = 4; % number of repetitions of CV
 setup.models.nFolds = 5; % number of CV folds for each repetition
 setup.models.seed = 12345; % random seed for reproducibility
 setup.models.spec = 'linear'; % type of GLM
@@ -97,7 +99,7 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = 'results/jumpsAnalysis.mat'; % where to save the analysis
+setup.filename = 'results/jumpsAnalysis3.mat'; % where to save the analysis
 
 
 % ************************************************************************
@@ -191,8 +193,11 @@ end
 vgrfFd = cell( nSets, nStd, nLMReg, nCTReg );
 warpFd = cell( nSets, nStd, nLMReg, nCTReg );
 fdPar = cell( nSets, nStd );
+
+regIter = zeros( nSets, nStd, nLMReg, nCTReg );
 decomp = cell( nSets, nStd, nLMReg, nCTReg );
 isValid = cell( nSets, nStd, nLMReg );
+
 name = strings( nSets, nStd, nLMReg, nCTReg );
 
 vgrfPCA = cell( nSets, nStd, nLMReg, nCTReg );
@@ -202,7 +207,9 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
-%load( setup.filename );
+load( setup.filename );
+vgrfFd{1,1,16,1} = [];
+
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -258,8 +265,9 @@ for i = 1:nSets
                    if k > 1 && isempty( vgrfFd{i,j,k,l} )
                        % landmark registration required
                        % applied to unregistered curves
-                       [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l} ] = ...
-                           registerVGRF( tSpan{i,j}, ...
+                       [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l}, ...
+                           regIter(i,j,k,l) ] = registerVGRF( ...
+                                         tSpan{i,j}, ...
                                          vgrfFd{i,j,1,1}, ...
                                          'Landmark', ...
                                          setup.reg );
@@ -287,8 +295,9 @@ for i = 1:nSets
                    if isempty( vgrfFd{i,j,k,l} )
                        % continuous registration required
                        % applied to prior-registered curves
-                       [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l} ] = ...
-                          registerVGRF( tSpan{i,j}, ...
+                       [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l}, ...
+                           regIter(i,j,k,l) ] = registerVGRF( ...
+                                        tSpan{i,j}, ...
                                         vgrfFd{i,j,k,1}, ...
                                         'Continuous', ...
                                         setup.reg, ...
@@ -347,9 +356,10 @@ for i = 1:nSets
            end
 
            % store data
-           save( setup.filename, ...
-                 'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-                 'isValid', 'vgrfPCA', 'vgrfACP', 'models', 'results' ); 
+           %save( setup.filename, ...
+           %      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+           %      'isValid', 'regIter', 'vgrfPCA', 'vgrfACP', ...
+           %      'models', 'results' ); 
          
 
        end
