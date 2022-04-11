@@ -16,10 +16,10 @@
 % ************************************************************************
 
 
-function [ validXFdReg, validWarpFd, i ] = registerVGRF( t, XFd, type, setup, warpFd0 )
+function [ validXFdReg, validWarpFd, i, isMonotonic ] = ...
+                        registerVGRF( t, XFd, type, setup, warpFd0 )
 
 % initialise
-monotonic = true;
 N = size( getcoef( XFd ), 2 );
 
 XFdReg = XFd;
@@ -58,11 +58,11 @@ while ~hasConverged && i < setup.maxIterations
                                            [ t(1) lm.mean t(end) ] );
 
             wFdReg = fd( zeros( setup.nBasis, 1), wBasis );
-            wFdRegPar = fdPar( wFdReg, 1, setup.wLambda );
+            wFdRegPar = fdPar( wFdReg, setup.basisOrder-2, setup.wLambda );
 
             [ XFdReg, warpFd ] = landmarkreg( ...
                                         XFdReg, lm.case, lm.mean, ...
-                                        wFdRegPar, monotonic, setup.XLambda );
+                                        wFdRegPar, true, setup.XLambda );
             
                                 
         case 'Continuous'
@@ -74,7 +74,7 @@ while ~hasConverged && i < setup.maxIterations
                                            setup.basisOrder );
 
             wFdReg = fd( zeros( setup.nBasis, 1), wBasis );
-            wFdRegPar = fdPar( wFdReg, 1, setup.wLambda );
+            wFdRegPar = fdPar( wFdReg, setup.basisOrder-2, setup.wLambda );
 
             XMeanFd = mean( XFdReg );
 
@@ -96,37 +96,44 @@ while ~hasConverged && i < setup.maxIterations
         warpT(:,j) = max( min( warpT(:,j), t(end) ), t(1) );
     end
 
+    i = i + 1;
+
     % re-smooth the warping curve using a more extensive basis
     % without landmarks with a minimal roughness penalty to 
     % ensure the closest adherence to the interpolated points
     % find the number of minimal number of basis functions required 
     % to maintain monotocity
     b = setup.basisOrder;
-    monotonic = false;
-    while ~monotonic && b <= setup.maxNBasis
+    allMonotonic = false;
+    while ~allMonotonic && b <= setup.maxNBasis
         b = b + 10;
         wBasis = create_bspline_basis( [t(1),t(end)], b, setup.basisOrder ); 
-        wFdPar = fdPar( wBasis, 1, 1E-10 );
+        wFdPar = fdPar( wBasis, setup.basisOrder-2, setup.wLambda );
         warpFd = smooth_basis( t, warpT, wFdPar );
     
-        warpDT = eval_fd( t, warpFd, 1 ); 
-        monotonic = all( warpDT>=0, 'all' );
+        warpDT = eval_fd( t, warpFd, 1 ); % compute 1st derivative
+        isMonotonic = all( warpDT>0 ); % monotonicity by curve
+        allMonotonic = all( isMonotonic );
     end
 
-    if monotonic
+    if allMonotonic || i==1
+        % accept if monotonic or if there is at least one registration
         validWarpFd = warpFd;
         validXFdReg = XFdReg;
+        if ~allMonotonic
+            disp('Warp functions not universally monotonic - accepting first registration.');
+            disp( ['Faulty registrations = ' num2str(sum(~isMonotonic)) ] );
+        end
     else
         disp('Warp functions not universally monotonic - reverting to previous version.');
+        disp( ['Faulty registrations = ' num2str(sum(~isMonotonic)) ] );
     end
 
     % check on progress
     decomp = regDecomp( XFd, validXFdReg, validWarpFd );
-    hasConverged = (abs(prevC-decomp.c) < setup.convCriterion) ...
-                    || ~monotonic;
+    hasConverged = (abs(prevC-decomp.c) < setup.convCriterion);
 
     prevC = decomp.c;
-    i = i + 1;
 
 end
 

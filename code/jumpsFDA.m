@@ -72,12 +72,12 @@ setup.Fd.names = [{'Time (ms)'},{'Jumps'},{'GRF (BW)'}]; % axes names
 setup.Fd.tolerance = 0.001; % performance measure error tolerance
 
 setup.reg.nBasis = 13; % numbers of bases for registration
-setup.reg.maxNBasis = 200; % maximum permissible basis functions for re-smoothing
 setup.reg.basisOrder = 3; % time warping basis order for registration
-setup.reg.wLambda = 1E-2; % roughness penalty for time warp 1E-2
+setup.reg.wLambda = 1E0; % roughness penalty for time warp 1E-2
 setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
 setup.reg.convCriterion = 0.001; % smallest change in C 
 setup.reg.maxIterations = 4; % maximum iterations to prevent infinite loop
+setup.reg.maxNBasis = 200; % maximum permissible number of warp basis functions
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
@@ -196,7 +196,7 @@ fdPar = cell( nSets, nStd );
 
 regIter = zeros( nSets, nStd, nLMReg, nCTReg );
 decomp = cell( nSets, nStd, nLMReg, nCTReg );
-isValid = cell( nSets, nStd, nLMReg );
+isValid = cell( nSets, nStd, nLMReg, nCTReg );
 
 name = strings( nSets, nStd, nLMReg, nCTReg );
 
@@ -207,9 +207,7 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
-load( setup.filename );
-vgrfFd{1,1,16,1} = [];
-
+%load( setup.filename );
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -238,22 +236,6 @@ for i = 1:nSets
        end      
        
        for k = 1:nLMReg
-
-           if isempty( isValid{i,j,k} )
-               % setup reference data in case rows have to be removed
-               ref = refSet{i};
-               type = typeSet{i};
-               jperf = perf{i};
-               part = partitions;
-           else
-               % setup reference data based on previous validation
-               ref = refSet{i}( isValid{i,j,k}, : );
-               type = typeSet{i}( isValid{i,j,k}, : );
-               jperf.JHtov = perf{i}.JHtov( isValid{i,j,k} );
-               jperf.JHwd = perf{i}.JHwd( isValid{i,j,k} );
-               jperf.PP = perf{i}.PP( isValid{i,j,k} );
-               part = partitions( isValid{i,j,k}, : );
-           end
            
            for l = 1:nCTReg
                
@@ -261,34 +243,35 @@ for i = 1:nSets
                [ name{i,j,k,l}, setup.reg.lm ] = encodeProc( i, j, k, l );
                disp(['*************** ' name{i,j,k,l} ' ***************']);
                
+               % setup reference data in case rows have to be removed
+               if l==1 
+                   % first registration starting with original curve
+                   % so all start as valid
+                   ref = refSet{i};
+                   type = typeSet{i};
+                   jperf = perf{i};
+                   part = partitions;
+               end
+               isValid{i,j,k,l} = true( size(type) );
+               
                if l == 1 % first 'l' loop
                    if k > 1 && isempty( vgrfFd{i,j,k,l} )
                        % landmark registration required
                        % applied to unregistered curves
                        [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l}, ...
-                           regIter(i,j,k,l) ] = registerVGRF( ...
+                           regIter(i,j,k,l), isValidReg ] = registerVGRF( ...
                                          tSpan{i,j}, ...
                                          vgrfFd{i,j,1,1}, ...
                                          'Landmark', ...
                                          setup.reg );
                                      
                        % check for any faulty registrations
-                       v = validateRegFd(  vgrfFd{i,j,1,1}, ...
-                                           vgrfFd{i,j,k,l}, ...
-                                           warpFd{i,j,k,l}, ...
-                                           setup.reg );
-                       
-                       % remove faulty registrations
-                       vgrfFd{i,j,k,l} = selectFd( vgrfFd{i,j,k,l}, v );
-                       warpFd{i,j,k,l} = selectFd( warpFd{i,j,k,l}, v );
-                       ref = ref( v, : );
-                       type = type( v );
-                       jperf.JHtov = jperf.JHtov( v );
-                       jperf.JHwd = jperf.JHwd( v );
-                       jperf.PP = jperf.PP( v );
-                       part = part( v, : );
-                       isValid{i,j,k} = v;
-                                     
+                       %v = validateRegFd(  vgrfFd{i,j,1,1}, ...
+                       %                    vgrfFd{i,j,k,l}, ...
+                       %                    warpFd{i,j,k,l}, ...
+                       %                    setup.reg );
+                   else
+                       isValidReg = true( size(type) );
                    end
                    
                else % second 'l' loop
@@ -296,7 +279,7 @@ for i = 1:nSets
                        % continuous registration required
                        % applied to prior-registered curves
                        [ vgrfFd{i,j,k,l}, warpFd{i,j,k,l}, ...
-                           regIter(i,j,k,l) ] = registerVGRF( ...
+                           regIter(i,j,k,l), isValidReg ] = registerVGRF( ...
                                         tSpan{i,j}, ...
                                         vgrfFd{i,j,k,1}, ...
                                         'Continuous', ...
@@ -304,11 +287,27 @@ for i = 1:nSets
                                         warpFd{i,j,k,1} );
                    end
                end
-                   
-               if k > 1 || l == 2
+               
+               if ~all( isValidReg )
+                   % remove faulty registrations
+                   % from these curves and curves for rest
+                   for m = l:nCTReg
+                       vgrfFd{i,j,k,m} = selectFd( vgrfFd{i,j,k,m}, isValidReg );
+                       warpFd{i,j,k,m} = selectFd( warpFd{i,j,k,m}, isValidReg );
+                   end
+                   ref = ref( isValidReg, : );
+                   type = type( isValidReg );
+                   jperf.JHtov = jperf.JHtov( isValidReg );
+                   jperf.JHwd = jperf.JHwd( isValidReg );
+                   jperf.PP = jperf.PP( isValidReg );
+                   part = part( isValidReg, : );
+                   isValid{i,j,k,l} = isValidReg;
+               end
+
+               if k > 1
                    % perform a decomposition analysis
                    decomp{i,j,k,l} = regDecomp( ...
-                           selectFd( vgrfFd{i,j,1,1}, isValid{i,j,k} ), ...
+                           selectFd( vgrfFd{i,j,1,1}, isValid{i,j,k,l} ), ...
                            vgrfFd{i,j,k,l}, ...
                            warpFd{i,j,k,l} );
                end
@@ -356,10 +355,10 @@ for i = 1:nSets
            end
 
            % store data
-           %save( setup.filename, ...
-           %      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-           %      'isValid', 'regIter', 'vgrfPCA', 'vgrfACP', ...
-           %      'models', 'results' ); 
+           save( setup.filename, ...
+                 'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+                 'isValid', 'regIter', 'vgrfPCA', 'vgrfACP', ...
+                 'models', 'results' ); 
          
 
        end
