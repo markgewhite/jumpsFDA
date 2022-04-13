@@ -117,17 +117,14 @@ while ~hasConverged && all(isValid) && i < setup.maxIterations
     isValid = isMonotonic & hasValidLandmarks;
     
     i = i + 1;
-    if all( isValid ) || i==1
-        % accept if valid but if this is the first registration
+    if ~(setup.allMustBeValid && ~all( isValid ))
+        % accept registration
         finalWarpFd = warpFd;
         finalXFdReg = XFdReg;
         finalValidity = isValid;
-        if ~all(isValid)
-            disp('Warp functions not universally valid - accepting first registration.');
-            disp( ['Faulty registrations = ' num2str(sum(~isValid)) ] );
-        end
-    else
-        disp('Warp functions not universally valid - reverting to previous version.');
+    end
+    if ~all(isValid)
+        disp('Warp functions not universally valid.');
         disp( ['Faulty registrations = ' num2str(sum(~isValid)) ] );
     end
 

@@ -78,7 +78,7 @@ setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
 setup.reg.convCriterion = 0.001; % smallest change in C 
 setup.reg.maxIterations = 4; % maximum iterations to prevent infinite loop
 setup.reg.nBasisTotalWarp = 203; % for re-smoothing total warp
-setup.reg.maxLMStd = 50; % maximum tolerable deviation from LM mean post reg
+setup.reg.allMustBeValid = false; % all curves must be valid for registration acceptance
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
@@ -100,7 +100,7 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = 'results/jumpsAnalysis3.mat'; % where to save the analysis
+setup.filename = 'results/jumpsAnalysis4.mat'; % where to save the analysis
 
 
 % ************************************************************************
@@ -208,9 +208,10 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
-load( setup.filename );
-vgrfFd{1,1,1,2} = [];
-warpFd{1,1,1,2} = [];
+%load( setup.filename );
+%load( 'results/jumpsAnalysis3.mat' );
+%vgrfFd{1,1,16,1} = [];
+%warpFd{1,1,16,1} = [];
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -349,10 +350,10 @@ for i = 1:nSets
            end
 
            % store data
-           %save( setup.filename, ...
-           %      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-           %      'isValid', 'regIter', 'vgrfPCA', 'vgrfACP', ...
-           %      'models', 'results' ); 
+           save( setup.filename, ...
+                 'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+                 'isValid', 'regIter', 'vgrfPCA', 'vgrfACP', ...
+                 'models' ); 
          
 
        end
