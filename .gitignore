@@ -1,6 +1,7 @@
 *.asv
 *.mat
+*.txt
 data/*
-results/jumpsAnalysis*.mat
-myTextLog.txt
+
+
 

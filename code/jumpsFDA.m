@@ -207,7 +207,7 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
-%load( setup.filename );
+load( setup.filename );
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -245,14 +245,13 @@ for i = 1:nSets
                
                % setup reference data in case rows have to be removed
                if l==1 
-                   % first registration starting with original curve
-                   % so all start as valid
+                   % create a baseline for the first registration
+                   baselineFd = vgrfFd{i,j,1,1};
                    ref = refSet{i};
                    type = typeSet{i};
                    jperf = perf{i};
                    part = partitions;
                end
-               isValid{i,j,k,l} = true( size(type) );
                
                if l == 1 % first 'l' loop
                    if k > 1 && isempty( vgrfFd{i,j,k,l} )
@@ -290,11 +289,9 @@ for i = 1:nSets
                
                if ~all( isValidReg )
                    % remove faulty registrations
-                   % from these curves and curves for rest
-                   for m = l:nCTReg
-                       vgrfFd{i,j,k,m} = selectFd( vgrfFd{i,j,k,m}, isValidReg );
-                       warpFd{i,j,k,m} = selectFd( warpFd{i,j,k,m}, isValidReg );
-                   end
+                   vgrfFd{i,j,k,l} = selectFd( vgrfFd{i,j,k,l}, isValidReg );
+                   warpFd{i,j,k,l} = selectFd( warpFd{i,j,k,l}, isValidReg );
+                   baselineFd = selectFd( baselineFd, isValidReg );
                    ref = ref( isValidReg, : );
                    type = type( isValidReg );
                    jperf.JHtov = jperf.JHtov( isValidReg );
@@ -307,7 +304,7 @@ for i = 1:nSets
                if k > 1
                    % perform a decomposition analysis
                    decomp{i,j,k,l} = regDecomp( ...
-                           selectFd( vgrfFd{i,j,1,1}, isValid{i,j,k,l} ), ...
+                           baselineFd, ...
                            vgrfFd{i,j,k,l}, ...
                            warpFd{i,j,k,l} );
                end
