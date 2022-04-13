@@ -9,53 +9,54 @@
 %       warpFd0: prior warp function (optional)
 %
 % Output:
-%       XFdReg: registered smoothed curves
-%       warpFd: time warping curves
+%       finalXFdReg: registered smoothed curves
+%       finalWarpFd: time warping curves
 %       i: number of iterations performed
+%       finalValidity: array indicating which curves are valid
 %
 % ************************************************************************
 
 
-function [ validXFdReg, validWarpFd, i, isMonotonic ] = ...
-                        registerVGRF( t, XFd, type, setup, warpFd0 )
+function [ finalXFdReg, finalWarpFd, i, finalValidity ] = ...
+                        registerVGRF( tSpan, XFd, type, setup, warpFd0 )
 
 % initialise
 N = size( getcoef( XFd ), 2 );
 
 XFdReg = XFd;
+
+% initialize the total warp time series to high resolution
 if nargin < 5 || isempty( warpFd0 )
-    warpT = repmat( t, N, 1 )';
+    totWarpT = repmat( tSpan, N, 1 )';
 else
-    warpT = eval_fd( t, warpFd0 );
-    warpT = max( min( warpT, t(end) ), t(1) );
+    totWarpT = eval_fd( tSpan, warpFd0 );
+    totWarpT = max( min( totWarpT, tSpan(end) ), tSpan(1) );
 end
 
 % use a Procustes style loop
 hasConverged = false;
 prevC = 1;
+isValid = true( 1, N );
 i = 0;
-while ~hasConverged && i < setup.maxIterations 
+while ~hasConverged && all(isValid) && i < setup.maxIterations 
     
     switch type
         
         case 'Landmark'
         
             % *** landmark registration ***
-            
-            % locate landmarks
-            lm = findGRFlandmarks( t, XFdReg, setup.lm );
+            lm = findGRFlandmarks( tSpan, XFdReg, setup.lm );
+            disp(['Landmark means  = ' num2str( lm.mean )]);
+            disp(['Landmark SDs    = ' num2str( std( lm.case ) )]);
 
-            % sort into order (in necessary)
+            % sort landmarks into order (if necessary)
             [ lm.mean, lm.order ] = sort( lm.mean, 'ascend' );
             lm.case = lm.case( :, lm.order );
 
-            disp(['Landmark means = ' num2str( lm.mean )]);
-            disp(['Landmark SDs   = ' num2str( std( lm.case ) )]);
-
-            wBasis = create_bspline_basis( [t(1),t(end)], ...
+            wBasis = create_bspline_basis( [tSpan(1),tSpan(end)], ...
                                            setup.nBasis, ...
                                            setup.basisOrder, ...
-                                           [ t(1) lm.mean t(end) ] );
+                                           [ tSpan(1) lm.mean tSpan(end) ] );
 
             wFdReg = fd( zeros( setup.nBasis, 1), wBasis );
             wFdRegPar = fdPar( wFdReg, setup.basisOrder-2, setup.wLambda );
@@ -69,7 +70,7 @@ while ~hasConverged && i < setup.maxIterations
                                     
             % *** continuous registration  ***
 
-            wBasis = create_bspline_basis( [t(1),t(end)], ...
+            wBasis = create_bspline_basis( [tSpan(1),tSpan(end)], ...
                                            setup.nBasis, ...
                                            setup.basisOrder );
 
@@ -87,60 +88,108 @@ while ~hasConverged && i < setup.maxIterations
   
     
     % update time warp to maintain link with original
-    for j = 1:N
-        % warp the previous warp
-        warpT(:,j) = eval_fd( warpT(:,j), warpFd(j) );
-        % separate the points evenly
-        warpT(:,j) = interp1( t, warpT(:,j), t, 'spline', 'extrap' );
-        % impose limits in case of over/underflow
-        warpT(:,j) = max( min( warpT(:,j), t(end) ), t(1) );
-    end
+    totWarpT = updateTotalWarp( totWarpT, warpFd, tSpan );
 
-    i = i + 1;
+    % convert the total warp time series into smooth functions
+    % using a high number of basis functions for fidelity with the time series
+    wBasis = create_bspline_basis( [tSpan(1),tSpan(end)], ...
+                                   setup.nBasisTotalWarp, ...
+                                   setup.basisOrder );
+    wFdPar = fdPar( wBasis, setup.basisOrder-2, setup.wLambda );
+    warpFd = smooth_basis( tSpan, totWarpT, wFdPar );
 
-    % re-smooth the warping curve using a more extensive basis
-    % without landmarks with a minimal roughness penalty to 
-    % ensure the closest adherence to the interpolated points
-    % find the number of minimal number of basis functions required 
-    % to maintain monotocity
-    b = setup.basisOrder;
-    allMonotonic = false;
-    while ~allMonotonic && b <= setup.maxNBasis
-        b = b + 10;
-        wBasis = create_bspline_basis( [t(1),t(end)], b, setup.basisOrder ); 
-        wFdPar = fdPar( wBasis, setup.basisOrder-2, setup.wLambda );
-        warpFd = smooth_basis( t, warpT, wFdPar );
+    % check monotonicity
+    % use the high-resolution time series rather than 
+    % re-smoothing and evaluating the derivative which was less reliable
+    % but exclude the final 10 milliseconds where they is very rapid change 
+    totWarpDT = eval_fd( tSpan(1:end-10), warpFd, 1 );
+    isMonotonic = all( totWarpDT>0 ); % monotonicity by curve
+
+    % check landmarks as indication of validity even if not landmark reg
+    hasValidLandmarks = validateLandmarks( tSpan, XFdReg );
     
-        warpDT = eval_fd( t, warpFd, 1 ); % compute 1st derivative
-        isMonotonic = all( warpDT>0 ); % monotonicity by curve
-        allMonotonic = all( isMonotonic );
-    end
+    % check for convergence
+    decomp = regDecomp( XFd, XFdReg, warpFd );
+    hasConverged = (abs(prevC-decomp.c) < setup.convCriterion);
+    prevC = decomp.c;
 
-    if allMonotonic || i==1
-        % accept if monotonic or if there is at least one registration
-        validWarpFd = warpFd;
-        validXFdReg = XFdReg;
-        if ~allMonotonic
-            disp('Warp functions not universally monotonic - accepting first registration.');
-            disp( ['Faulty registrations = ' num2str(sum(~isMonotonic)) ] );
+    % determine overall validity
+    isValid = isMonotonic & hasValidLandmarks;
+    
+    i = i + 1;
+    if all( isValid ) || i==1
+        % accept if valid but if this is the first registration
+        finalWarpFd = warpFd;
+        finalXFdReg = XFdReg;
+        finalValidity = isValid;
+        if ~all(isValid)
+            disp('Warp functions not universally valid - accepting first registration.');
+            disp( ['Faulty registrations = ' num2str(sum(~isValid)) ] );
         end
     else
-        disp('Warp functions not universally monotonic - reverting to previous version.');
-        disp( ['Faulty registrations = ' num2str(sum(~isMonotonic)) ] );
+        disp('Warp functions not universally valid - reverting to previous version.');
+        disp( ['Faulty registrations = ' num2str(sum(~isValid)) ] );
     end
-
-    % check on progress
-    decomp = regDecomp( XFd, validXFdReg, validWarpFd );
-    hasConverged = (abs(prevC-decomp.c) < setup.convCriterion);
-
-    prevC = decomp.c;
 
 end
 
 if strcmp( type, 'Landmark' )
-    lm = findGRFlandmarks( t, validXFdReg, setup.lm );
-    disp(['Landmark means  = ' num2str( lm.mean )]);
-    disp(['Landmark SDs    = ' num2str( std( lm.case ) )]);
+    % locate landmarks
+    lm = findGRFlandmarks( tSpan, finalXFdReg, setup.lm );
+    disp(['Final landmark means = ' num2str( lm.mean )]);
+    disp(['Final landmark SDs   = ' num2str( std( lm.case ) )]);
 end
+
+
+
+end
+
+
+function totWarpT = updateTotalWarp( totWarpT, newWarpFd, t )
+
+    N = size( totWarpT, 2 );
+    for i = 1:N
+        % warp the previous warp
+        totWarpT(:,i) = eval_fd( totWarpT(:,i), newWarpFd(i) );
+        % separate the points evenly
+        totWarpT(:,i) = interp1( t, totWarpT(:,i), t, 'spline', 'extrap' );
+        % impose limits in case of over/underflow
+        totWarpT(:,i) = max( min( totWarpT(:,i), t(end) ), t(1) );
+    end
+
+end
+
+
+function isValid = validateLandmarks( tSpan, XFdReg )
+
+    % find all possible landmarks
+    setup.grfmin = true;
+    setup.pwrmin = true;
+    setup.pwrcross = true;
+    setup.pwrmax = true;
+    lm = findGRFlandmarks( tSpan, XFdReg, setup );
+
+    [ nCurves, nLMs ]= size( lm.case );
+    isValid = true( nCurves, 1 );
+
+    % check for any extreme outliers
+    for i = 1:nLMs
+        % compute mean and SD with outliers excluded
+        limits = prctile( lm.case(:,i), [2.5 97.5] );
+        outliers = (lm.case(:,i)<limits(1) | lm.case(:,i)>limits(2));
+        sd = std( lm.case(~outliers, i) );
+        avg = mean( lm.case(~outliers, i) );
+        % check if within max Z score 
+        % (very large because SD computed without outliers)
+        isValid = isValid & (abs(lm.case(:,i)-avg)/sd < 50);
+    end
+
+    % check if any landmarks are out of sequence
+    for i = 1:nCurves
+        [~, order] = sort( lm.case(i,:) );
+        isValid(i) = isValid(i) && all(diff(order)==1);
+    end
+
+    isValid = isValid';
 
 end

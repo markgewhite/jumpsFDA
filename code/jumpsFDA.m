@@ -77,7 +77,8 @@ setup.reg.wLambda = 1E0; % roughness penalty for time warp 1E-2
 setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
 setup.reg.convCriterion = 0.001; % smallest change in C 
 setup.reg.maxIterations = 4; % maximum iterations to prevent infinite loop
-setup.reg.maxNBasis = 200; % maximum permissible number of warp basis functions
+setup.reg.nBasisTotalWarp = 203; % for re-smoothing total warp
+setup.reg.maxLMStd = 50; % maximum tolerable deviation from LM mean post reg
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
@@ -208,6 +209,8 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
 load( setup.filename );
+vgrfFd{1,1,1,2} = [];
+warpFd{1,1,1,2} = [];
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -262,13 +265,7 @@ for i = 1:nSets
                                          tSpan{i,j}, ...
                                          vgrfFd{i,j,1,1}, ...
                                          'Landmark', ...
-                                         setup.reg );
-                                     
-                       % check for any faulty registrations
-                       %v = validateRegFd(  vgrfFd{i,j,1,1}, ...
-                       %                    vgrfFd{i,j,k,l}, ...
-                       %                    warpFd{i,j,k,l}, ...
-                       %                    setup.reg );
+                                         setup.reg );                                    
                    else
                        isValidReg = true( size(type) );
                    end
@@ -287,6 +284,7 @@ for i = 1:nSets
                    end
                end
                
+               isValid{i,j,k,l} = isValidReg;
                if ~all( isValidReg )
                    % remove faulty registrations
                    vgrfFd{i,j,k,l} = selectFd( vgrfFd{i,j,k,l}, isValidReg );
@@ -298,7 +296,6 @@ for i = 1:nSets
                    jperf.JHwd = jperf.JHwd( isValidReg );
                    jperf.PP = jperf.PP( isValidReg );
                    part = part( isValidReg, : );
-                   isValid{i,j,k,l} = isValidReg;
                end
 
                if k > 1
@@ -352,10 +349,10 @@ for i = 1:nSets
            end
 
            % store data
-           save( setup.filename, ...
-                 'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
-                 'isValid', 'regIter', 'vgrfPCA', 'vgrfACP', ...
-                 'models', 'results' ); 
+           %save( setup.filename, ...
+           %      'decomp', 'fdPar', 'name', 'vgrfFd', 'warpFd', ...
+           %      'isValid', 'regIter', 'vgrfPCA', 'vgrfACP', ...
+           %      'models', 'results' ); 
          
 
        end
