@@ -1,19 +1,15 @@
 % ************************************************************************
 % Function: findGRFlandmarks
 % Purpose:  Locate landmarks for a GRF set of curves
-%           Specifically landmarks Start, Minimum, Cross
 %
 % Parameters:
 %       tspan: timespan for the GRF series
 %       grf: GRF functional data object
 %       lm: landmarks structure including:
-%           .start: jump initiation
-%           .min: VGRF minima
-%           .cross: Net VGRF crossing point
-%           .max: first VGRF maxima before take-off
-%       opt: options structure including:
-%           doHistogram: flag indicating whether the display histograms
-%           doCurvePlots: flag whether to plot registration curves
+%          .grfmin   % use VGRF minimum as a landmark?
+%          .pwrmin   % use Power minimum as a landmark?
+%          .pwrcross % use Power crossing point as a landmark?
+%          .pwrmax   % use Power maximum as a landmark?e-off
 %
 % Output:
 %       landmarks: where the landmarks are located in time (means & cases)
