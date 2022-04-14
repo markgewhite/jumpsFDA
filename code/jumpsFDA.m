@@ -71,14 +71,17 @@ setup.Fd.penaltyOrder = 2; % roughness penalty
 setup.Fd.names = [{'Time (ms)'},{'Jumps'},{'GRF (BW)'}]; % axes names
 setup.Fd.tolerance = 0.001; % performance measure error tolerance
 
-setup.reg.nBasis = 13; % numbers of bases for registration
 setup.reg.basisOrder = 3; % time warping basis order for registration
+setup.reg.nBasis = 10 + setup.reg.basisOrder; % numbers of bases for registration
 setup.reg.wLambda = 1E0; % roughness penalty for time warp 1E-2
-setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y
+setup.reg.XLambda = 1E6; % roughness penalty to prevent wiggles in y 1E3
 setup.reg.convCriterion = 0.001; % smallest change in C 
 setup.reg.maxIterations = 4; % maximum iterations to prevent infinite loop
-setup.reg.nBasisTotalWarp = 203; % for re-smoothing total warp
 setup.reg.allMustBeValid = false; % all curves must be valid for registration acceptance
+
+setup.reg.rewarp.basisOrder = 5; % higher order for resmoothing total warp
+setup.reg.rewarp.wLambda = 1E-10; % minimal penalty for high fidelity smoothing
+setup.reg.rewarp.nBasisMax = 256 + setup.reg.rewarp.basisOrder;
 
 setup.reg.lm.grfmin = false; % use VGRF minimum as a landmark?
 setup.reg.lm.pwrmin = false; % use Power minimum as a landmark?
@@ -100,7 +103,7 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = 'results/jumpsAnalysis4.mat'; % where to save the analysis
+setup.filename = 'results/jumpsAnalysis5.mat'; % where to save the analysis
 
 
 % ************************************************************************
@@ -209,7 +212,7 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
 %load( setup.filename );
-%load( 'results/jumpsAnalysis3.mat' );
+%load( 'results/jumpsAnalysis4.mat' );
 %vgrfFd{1,1,16,1} = [];
 %warpFd{1,1,16,1} = [];
 

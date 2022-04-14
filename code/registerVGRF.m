@@ -88,22 +88,11 @@ while ~hasConverged && all(isValid) && i < setup.maxIterations
   
     
     % update time warp to maintain link with original
-    totWarpT = updateTotalWarp( totWarpT, warpFd, tSpan );
+    totWarpT = updateTotalWarp( tSpan, totWarpT, warpFd );
 
     % convert the total warp time series into smooth functions
-    % using a high number of basis functions for fidelity with the time series
-    wBasis = create_bspline_basis( [tSpan(1),tSpan(end)], ...
-                                   setup.nBasisTotalWarp, ...
-                                   setup.basisOrder );
-    wFdPar = fdPar( wBasis, setup.basisOrder-2, setup.wLambda );
-    warpFd = smooth_basis( tSpan, totWarpT, wFdPar );
-
-    % check monotonicity
-    % use the high-resolution time series rather than 
-    % re-smoothing and evaluating the derivative which was less reliable
-    % but exclude the final 10 milliseconds where they is very rapid change 
-    totWarpDT = eval_fd( tSpan(1:end-10), warpFd, 1 );
-    isMonotonic = all( totWarpDT>0 ); % monotonicity by curve
+    % checking for monotonicity
+    [ warpFd, isMonotonic ] = resmoothWarp( tSpan, totWarpT, setup.rewarp );
 
     % check landmarks as indication of validity even if not landmark reg
     hasValidLandmarks = validateLandmarks( tSpan, XFdReg );
@@ -124,15 +113,20 @@ while ~hasConverged && all(isValid) && i < setup.maxIterations
         finalValidity = isValid;
     end
     if ~all(isValid)
-        disp('Warp functions not universally valid.');
-        disp( ['Faulty registrations = ' num2str(sum(~isValid)) ] );
+        disp('Warp functions not all valid.');
+        disp( ['Faulty registrations (non-monotonic) = ' ...
+                    num2str(sum(~isMonotonic)) ] );
+        disp( ['Faulty registrations (landmarks) = ' ...
+                    num2str(sum(~hasValidLandmarks)) ] );
     end
 
 end
 
 if strcmp( type, 'Landmark' )
     % locate landmarks
-    lm = findGRFlandmarks( tSpan, finalXFdReg, setup.lm );
+    lm = findGRFlandmarks( tSpan, ...
+                           selectFd( finalXFdReg, isMonotonic ), ...
+                           setup.lm );
     disp(['Final landmark means = ' num2str( lm.mean )]);
     disp(['Final landmark SDs   = ' num2str( std( lm.case ) )]);
 end
@@ -142,7 +136,7 @@ end
 end
 
 
-function totWarpT = updateTotalWarp( totWarpT, newWarpFd, t )
+function totWarpT = updateTotalWarp( t, totWarpT, newWarpFd )
 
     N = size( totWarpT, 2 );
     for i = 1:N
@@ -157,14 +151,50 @@ function totWarpT = updateTotalWarp( totWarpT, newWarpFd, t )
 end
 
 
-function isValid = validateLandmarks( tSpan, XFdReg )
+function [ warpFd, isMonotonic ] = resmoothWarp( t, warpT, setup )
+
+    % re-smooth the warping curve using a more extensive basis
+    % to ensure the closest adherence to the interpolated points
+    % using the minimal number of basis functions required 
+    % to maintain monotocity
+    % this adaptive approach saves memory
+
+    b = 4 + setup.basisOrder;
+    allMonotonic = false;
+    while ~allMonotonic && b < setup.nBasisMax
+
+        % double number of basis functions
+        b = (b-setup.basisOrder)*2 + setup.basisOrder;
+
+        % smooth time series with the trial basis
+        wBasis = create_bspline_basis( [t(1),t(end)], b, ...
+                                       setup.basisOrder ); 
+        wFdPar = fdPar( wBasis, ...
+                        setup.basisOrder-2, ...
+                        setup.wLambda );
+        warpFd = smooth_basis( t, warpT, wFdPar );
+    
+        % compute the first derivative
+        warpDT = eval_fd( t, warpFd, 1 );
+        % check monotonicty by curve
+        % but exclude the final 10 milliseconds where's very rapid change 
+        isMonotonic = all( warpDT > 0 );
+        allMonotonic = all( isMonotonic );
+        
+    end
+    disp(['Resmooth warp: number of basis functions = ' num2str(b)]);
+
+end
+
+
+function isValid = validateLandmarks( t, XFdReg )
 
     % find all possible landmarks
     setup.grfmin = true;
     setup.pwrmin = true;
     setup.pwrcross = true;
     setup.pwrmax = true;
-    lm = findGRFlandmarks( tSpan, XFdReg, setup );
+    lm = findGRFlandmarks( t, XFdReg, setup );
 
     [ nCurves, nLMs ]= size( lm.case );
     isValid = true( nCurves, 1 );
