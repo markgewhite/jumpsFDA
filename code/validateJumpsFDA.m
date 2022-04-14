@@ -29,11 +29,11 @@ for i = 1:nSets
 
                 basisFd = getbasis( warpFd{i,j,2,1} );
                 tRange = getbasisrange( basisFd );
-                tSpanWarp = [ tRange(1) getbasispar( basisFd ) tRange(2) ];
-                nKnots = length(tSpanWarp);
+                nKnots = length(getbasispar( basisFd ));
+                tSpanWarp = tRange(1):tRange(2);
 
-                warpDerivPts = eval_fd( tSpanWarp, warpFd{i,j,k,l}, 1 );
-                nCurves = size(warpDerivPts,2);
+                warpDerivPts = eval_fd( tSpanWarp(1:end-10), warpFd{i,j,k,l}, 1 );
+                nCurves = size( warpDerivPts, 2 );
                 if nCurves > maxCurves
                     maxCurves = nCurves;
                 end

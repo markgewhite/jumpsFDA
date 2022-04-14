@@ -218,19 +218,20 @@ Other files are dedicated to generating plots of the results. The paper focused 
 
 First, load the results file:
 
-	load( 'results/jumpsAnalysis.mat' )
+```Matlab
+load( 'results/jumpsAnalysis.mat' )
 	
-	[fig1, fig2 ] = plotCurves( vgrfFd, warpFd )
-	fig3 = plotDecompScatter( decomp )
-	fig4 = plotKeyComponents( vgrfPCA )
+[fig1, fig2 ] = plotCurves( vgrfFd, warpFd )
+fig3 = plotDecompScatter( decomp )
+fig4 = plotKeyComponents( vgrfPCA )
 	
-	fig5 = fig = plotCoeffRSq( models, ["JHtov" "jumpType"] );
-
+fig5 = fig = plotCoeffRSq( models, ["JHtov" "jumpType"] );
+```
 
 Or, alternatively:
-
-	fig5 = plotCoeffRSq( models, ["JHwd" "PP"] );
-
+```Matlab
+fig5 = plotCoeffRSq( models, ["JHwd" "PP"] );
+```
 
 
 
