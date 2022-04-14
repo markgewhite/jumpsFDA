@@ -156,8 +156,6 @@ function [ warpFd, isMonotonic ] = resmoothWarp( t, warpT, setup )
     % re-smooth the warping curve using a more extensive basis
     % to ensure the closest adherence to the interpolated points
     % using the minimal number of basis functions required 
-    % to maintain monotocity
-    % this adaptive approach saves memory
 
     b = 4 + setup.basisOrder;
     allMonotonic = false;
@@ -177,7 +175,6 @@ function [ warpFd, isMonotonic ] = resmoothWarp( t, warpT, setup )
         % compute the first derivative
         warpDT = eval_fd( t, warpFd, 1 );
         % check monotonicty by curve
-        % but exclude the final 10 milliseconds where's very rapid change 
         isMonotonic = all( warpDT > 0 );
         allMonotonic = all( isMonotonic );
         

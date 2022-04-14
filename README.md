@@ -141,10 +141,57 @@ This can sometimes go slightly awry at the ends of the time series where the end
         totWarpT(:,i) = max( min( totWarpT(:,i), t(end) ), t(1) );
 ```
 
-### Validity check: warp function monotoncity
+### Re-smoothing the total warp
 
-The above interpolating procedure works well due to the high resolution, retaining the warping curves' monotonicity (time always going forward, never a negative gradient). However, these time series need to be converted back into warping functions with high fidelity, which requires a large number of knots (200), much more than the original time warping functions (10). (The registration library routines are very expensive so the warping function must be kept relatively simple.) Things can go slightly awry near jump take-off where the VGRF curve is changing rapid so the last 10 ms are ignored in the monotonicity check.
+The total warp is computed as a time series, as above, but it needs to be converted back into a smooth function using the <code>resmoothWarp</code> function. The re-smoothed warping functions need to be of a higher order because they may represent a more complex shapes, the compounding effect of multiple warpings. A 5th order b-spline basis function works well with a minimal roughness penalty (1E-10) to ensure high fidelity with the total warp time series, <code>warpT</code>.
 
+```Matlab
+        wBasis = create_bspline_basis( [t(1),t(end)], b, ...
+                                       setup.basisOrder ); 
+        wFdPar = fdPar( wBasis, ...
+                        setup.basisOrder-2, ...
+                        setup.wLambda );
+        warpFd = smooth_basis( t, warpT, wFdPar );
+```
+
+The variable, <code>b</code>, is the number of basis functions which are adaptively increased until all function are monotonic. The loop double <code>b</code> each time or until an upper limit is reached (256 + basis order). This adaptive approach is necessary rather than just specifiying a large number of basis functions in order to save on memory/disk storage. If the maximum were used everytime, the memory required for the warping functions would be larger than all other variables. Here is the full function (note that the <code>setup</code> is a re-warping specific setup):
+
+```Matlab
+function [ warpFd, isMonotonic ] = resmoothWarp( t, warpT, setup )
+
+    % re-smooth the warping curve using a more extensive basis
+    % to ensure the closest adherence to the interpolated points
+    % using the minimal number of basis functions required 
+
+    b = 4 + setup.basisOrder;
+    allMonotonic = false;
+    while ~allMonotonic && b < setup.nBasisMax
+
+        % double number of basis functions
+        b = (b-setup.basisOrder)*2 + setup.basisOrder;
+
+        % smooth time series with the trial basis
+        wBasis = create_bspline_basis( [t(1),t(end)], b, ...
+                                       setup.basisOrder ); 
+        wFdPar = fdPar( wBasis, ...
+                        setup.basisOrder-2, ...
+                        setup.wLambda );
+        warpFd = smooth_basis( t, warpT, wFdPar );
+    
+        % compute the first derivative
+        warpDT = eval_fd( t, warpFd, 1 );
+        % check monotonicty by curve
+        isMonotonic = all( warpDT > 0 );
+        allMonotonic = all( isMonotonic );
+        
+    end
+    disp(['Resmooth warp: number of basis functions = ' num2str(b)]);
+
+end
+
+```
+
+ 
 ### Validity check: VGRF curves 
 
 Registration can very occasionally distort curves excessively. A good way to check if the VGRF curve is still reasonable is to use all landmarks irrespective of landmark registration is being performed. The sub-function <code>validateLandmarks( tSpan, XFdReg )</code> performs two checks.
