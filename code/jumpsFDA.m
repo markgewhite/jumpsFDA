@@ -249,7 +249,7 @@ for i = 1:nSets
            jperf = perf{i};
            part = partitions;
            
-           for l = 2:nCTReg
+           for l = 1:nCTReg
                
                % encode the processing procedure
                [ name{i,j,k,l}, setup.reg.lm ] = encodeProc( i, j, k, l );
