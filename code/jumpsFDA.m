@@ -74,7 +74,7 @@ setup.Fd.tolerance = 0.001; % performance measure error tolerance
 setup.reg.basisOrder = 3; % time warping basis order for registration
 setup.reg.nBasis = 10 + setup.reg.basisOrder; % numbers of bases for registration
 setup.reg.wLambda = 1E0; % roughness penalty for time warp 1E-2
-setup.reg.XLambda = 1E6; % roughness penalty to prevent wiggles in y 1E3
+setup.reg.XLambda = 1E3; % roughness penalty to prevent wiggles in y 1E3
 setup.reg.convCriterion = 0.001; % smallest change in C 
 setup.reg.maxIterations = 4; % maximum iterations to prevent infinite loop
 setup.reg.allMustBeValid = false; % all curves must be valid for registration acceptance
@@ -103,7 +103,7 @@ setup.models.interactions = false; % interactions between ampl and warp
 setup.models.criterion = 'bic'; % predictor selection criterion
 setup.models.RSqMeritThreshold = 0.7; % merit threshold for stepwise selection
 
-setup.filename = 'results/jumpsAnalysis5.mat'; % where to save the analysis
+setup.filename = 'results/jumpsAnalysis6.mat'; % where to save the analysis
 
 
 % ************************************************************************
@@ -212,9 +212,6 @@ results = cell( nSets, nStd, nLMReg, nCTReg );
 models = cell( nSets, nStd, nLMReg, nCTReg );
 
 %load( setup.filename );
-%load( 'results/jumpsAnalysis4.mat' );
-%vgrfFd{1,1,16,1} = [];
-%warpFd{1,1,16,1} = [];
 
 % set random seed for reproducibility
 rng( setup.models.seed );
@@ -243,22 +240,20 @@ for i = 1:nSets
        end      
        
        for k = 1:nLMReg
+
+           % create a baseline for the first registration
+           % in case rows have to be removed
+           baselineFd = vgrfFd{i,j,1,1};
+           ref = refSet{i};
+           type = typeSet{i};
+           jperf = perf{i};
+           part = partitions;
            
-           for l = 1:nCTReg
+           for l = 2:nCTReg
                
                % encode the processing procedure
                [ name{i,j,k,l}, setup.reg.lm ] = encodeProc( i, j, k, l );
                disp(['*************** ' name{i,j,k,l} ' ***************']);
-               
-               % setup reference data in case rows have to be removed
-               if l==1 
-                   % create a baseline for the first registration
-                   baselineFd = vgrfFd{i,j,1,1};
-                   ref = refSet{i};
-                   type = typeSet{i};
-                   jperf = perf{i};
-                   part = partitions;
-               end
                
                if l == 1 % first 'l' loop
                    if k > 1 && isempty( vgrfFd{i,j,k,l} )

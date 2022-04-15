@@ -174,8 +174,8 @@ function [ warpFd, isMonotonic ] = resmoothWarp( t, warpT, setup )
     
         % compute the first derivative
         warpDT = eval_fd( t, warpFd, 1 );
-        % check monotonicty by curve
-        isMonotonic = all( warpDT > 0 );
+        % check monotonicty by curve excluding the last 5 ms
+        isMonotonic = all( warpDT( 1:end-5,: ) > 0 );
         allMonotonic = all( isMonotonic );
         
     end
