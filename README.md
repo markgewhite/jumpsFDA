@@ -180,8 +180,8 @@ function [ warpFd, isMonotonic ] = resmoothWarp( t, warpT, setup )
     
         % compute the first derivative
         warpDT = eval_fd( t, warpFd, 1 );
-        % check monotonicty by curve
-        isMonotonic = all( warpDT > 0 );
+        % check monotonicty by curve excluding the last 5 ms
+        isMonotonic = all( warpDT( 1:end-5,: ) > 0 );
         allMonotonic = all( isMonotonic );
         
     end
@@ -190,6 +190,8 @@ function [ warpFd, isMonotonic ] = resmoothWarp( t, warpT, setup )
 end
 
 ```
+
+Note that the final 5 ms before take-off are excluded for the test of monotonicity because with a very few registrations (3/128) the warping gradient turns negative for large number of curves at the end of the time series. Only the large dataset with CMJ<sub>NA</sub> and CMJ<sub>A</sub> are affect where continuous registration is applied to curves preivously registered with 3-4 landmarks: PAD-01111C (87 curves), PAD-1111C (19) and LTN-01111C (38). The warping gradients in these curves only turn negative in the last few milliseconds. This may be due to the rapid changes in VGRF combined with the boundary effect from the end of the time series. These curves need not be excluded if the monotonicity test ignores the last few points.
 
  
 ### Validity check: VGRF curves 
@@ -244,7 +246,7 @@ end
 
 
 The 4D arrays have this structure:
-- 2 datasets: CMJ_NA & CMJ_A 
+- 2 datasets: CMJ<sub>NA</sub> & CMJ<sub>A</sub> 
 - 2 length standardisations: PAD & LTN
 - 16 landmark registration: 0000-1111
 - 2 continuous registrations: - & C
