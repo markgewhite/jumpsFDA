@@ -1,6 +1,7 @@
 *.asv
 *.mat
 *.txt
+~$*.xlsx
 data/*
 !results/jumpsAnalysis.mat
 

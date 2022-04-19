@@ -368,9 +368,7 @@ end
 % ************************************************************************
 
 
-longResults = compileResults( results );
 longPerformance = compileResults( models, 'perf' );
-longInclude = compileResults( models, 'incl' );
 longTStat = compileResults( models, 'tStat' );
 longCoeffRSq = compileResults( models, 'coeffRSq' );
 longDecomp = compileResults( decomp );

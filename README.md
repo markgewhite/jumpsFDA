@@ -10,11 +10,9 @@ The code generates 1024 linear models that predict jump height, peak power or cl
 - feature extraction (Functional PCA or Analysis of Characteristiing Phases)
 - component rotation (unrotated/varimax)
 
-The MATLAB library for  functional data analysis can be found [here](https://www.psych.mcgill.ca/misc/fda/downloads/FDAfuns/Matlab/).
-
 ## Key operations
 
-The analysis is run by <code>jumpsFDA.m</code>. The main loop iterates through the following operations:
+The analysis is run by [code/jumpsFDA.m](code/jumpsFDA.m). The main loop iterates through the following operations:
 - data partitioning
 - length standardisation
 - functional smoothing
@@ -23,13 +21,28 @@ The analysis is run by <code>jumpsFDA.m</code>. The main loop iterates through t
 - decomposition analysis
 - linear modelling 
 
-## FDA Library
 
-<code>jumpsFDA.m</code> runs the full analysis, using a raw datafile that is not available yet - see below. 
+It depends on the Matlab library for  functional data analysis which can be found [here](https://www.psych.mcgill.ca/misc/fda/downloads/FDAfuns/Matlab/).
+
+
+## Raw data
+
+[jumpsFDA](code/jumpsFDA.m) reads the raw datafile [data/compactjumpsdata.mat](data/compactjumpsdata.mat) which contains anonymised data. It is currently unavailable until ethics approval is granted. It has the following structure:
+- <code>bwall: 64x16 double</code> (bodyweights)
+- <code>grf.raw: 64x16 cell</code> (raw 1D VGRF data of variable lengths)
+- <code>grf.initiation: 64x16 double</code> (jump initiaion index)
+- <code>grf.takeoff: 64x16 double</code> (take-off index)
+- <code>jumpOrder: 104x16 string</code> (master list specifying the the jump type for each trial)
+- <code>nJumpsPerSubject: 64x1 double</code> (how many jumps for each subject)
+- <code>sDataID: 1x64 double</code> (lookup table linking array index to subject ID)
+- <code>sJumpID: 1x104 double</code> (lookup table linking trial index to jump order ID)
+
+If approval is not forthcoming I plan to provide dummy data instead.
+
 
 ## Jump initiation
 
-The countermovement jumps were performed by 55 participants, as described in the paper, and the vertical ground reaction forces recorded. These recordings started before the jump and finished after the landing. The investigation was only interested in the forces up to take-off. It was necessary to identify when the jump was started. Identifying the start and end points was the purpose of the function <code>demarcateJump.m</code>.
+The countermovement jumps were performed by 55 participants, as described in the paper, and the vertical ground reaction forces recorded. These recordings started before the jump and finished after the landing. The investigation was only interested in the forces up to take-off. It was necessary to identify when the jump was started. Identifying the start and end points was the purpose of the function [demarcateJump](code/demarcateJump.m).
 
 Take-off is easily found where VGRF drops below 10 N.
 
@@ -76,13 +89,13 @@ end
 
 The routine also provides helpful VGRF plots if the <code>plotVGRF</code> flag is set.
 
-The demarcation function is called by <code>extractVGRFData.m</code>, which also excludes outliers in terms of time series length. Lenght distribution information is provided. 
+The demarcation function is called by [extractVGRFData](code/extractVGRFData.m), which also excludes outliers in terms of time series length. Lenght distribution information is provided. 
 
 
 
 ## Registration
 
-The code carries out an iterative procedure in <code>registerVGRF.m</code>, performing either landmark or continuous registration on each curve set. The purpose of registration is to more closely align the curves with one another by warping the time domain. Alignment in landmark registration is when the defined landmarks (salient features) of each curve line up with the corresponding mean landmark positions. Alignment in continuous registration attempts to align the whole length of the curve according to a specified criterion.
+The code carries out an iterative procedure in [registerVGRF](code/registerVGRF.m), performing either landmark or continuous registration on each curve set. The purpose of registration is to more closely align the curves with one another by warping the time domain. Alignment in landmark registration is when the defined landmarks (salient features) of each curve line up with the corresponding mean landmark positions. Alignment in continuous registration attempts to align the whole length of the curve according to a specified criterion.
 
 The following steps are performed in each registration iteration:
 1.   Perform either landmark or continuous registration as specified in the setup, which returns the registered curves <code>XFdReg</code> and the warping curves <code>warpFd</code>.
@@ -95,7 +108,7 @@ The following steps are performed in each registration iteration:
 
 ### Landmarks
 
-The landmarks are located by <code>findGRFlandmarks</code>, specifically:
+The landmarks are located by [findGRFlandmarks](code/findGRFlandmarks.m), specifically:
 -  VGRF minimum
 -  Peak negative power
 -  Zero power (start of the concentric phase)
@@ -103,7 +116,7 @@ The landmarks are located by <code>findGRFlandmarks</code>, specifically:
 
 ### Cumulative time warping
 
-In an iterative registration procedure it is necessary to keep a track of the total warp so the subsequent models can use the full information this provides. <code>updateTotalWarp</code> does this by "warping the warp". The idea is to project the new time warp onto the old time warp. It works on a high-resoluition time series (1 ms intervals) rather than the functions. 
+In an iterative registration procedure it is necessary to keep a track of the total warp so the subsequent models can use the full information this provides. The sub-function <code>updateTotalWarp</code> does this by "warping the warp". The idea is to project the new time warp onto the old time warp. It works on a high-resoluition time series (1 ms intervals) rather than the functions. 
 
 ```Matlab
 function totWarpT = updateTotalWarp( totWarpT, newWarpFd, t )
@@ -143,7 +156,7 @@ This can sometimes go slightly awry at the ends of the time series where the end
 
 ### Re-smoothing the total warp
 
-The total warp is computed as a time series, as above, but it needs to be converted back into a smooth function using the <code>resmoothWarp</code> function. The re-smoothed warping functions need to be of a higher order because they may represent a more complex shapes, the compounding effect of multiple warpings. A 5th order b-spline basis function works well with a minimal roughness penalty (1E-10) to ensure high fidelity with the total warp time series, <code>warpT</code>.
+The total warp is computed as a time series, as above, but it needs to be converted back into a smooth function using the <code>resmoothWarp</code> sub-function. The re-smoothed warping functions need to be of a higher order because they may represent a more complex shapes, the compounding effect of multiple warpings. A 5th order b-spline basis function works well with a minimal roughness penalty (1E-10) to ensure high fidelity with the total warp time series, <code>warpT</code>.
 
 ```Matlab
         wBasis = create_bspline_basis( [t(1),t(end)], b, ...
@@ -196,7 +209,7 @@ Note that the final 5 ms before take-off are excluded for the test of monotonici
  
 ### Validity check: VGRF curves 
 
-Registration can very occasionally distort curves excessively. A good way to check if the VGRF curve is still reasonable is to use all landmarks irrespective of landmark registration is being performed. The sub-function <code>validateLandmarks( tSpan, XFdReg )</code> performs two checks.
+Registration can very occasionally distort curves excessively. A good way to check if the VGRF curve is still reasonable is to use all landmarks irrespective of landmark registration is being performed. The sub-function <code>validateLandmarks( tSpan, XFdReg )</code> performs two checks:
 - Whether a given landmark for an individual curve is out of kilter with the others in the curve set
 - Whether the landmarks for each curve at in the correct order
 
@@ -227,13 +240,9 @@ end
 ```
 
 
-
-
-  
-
 ## Outputs
 
-<code>jumpsFDA.m</code> outputs a Matlab data file: <code>results/jumpsAnalysis.mat</code>. It contains the following:
+[jumpsFDA](code/jumpsFDA.m) outputs a Matlab data file [results/jumpsAnalysis.mat](results/jumpsAnalysis.mat). It contains the following:
 - <code>decomp (2x2x16x2 cell array)</code> amplitude/phase decomposition  
 - <code>fdPar (2x2 cell array)</code> FDA smoothing parameters, dataset by length standardisation
 - <code>isValid (2x2x16 cell array)</code> logical array indicating valid registrations
@@ -245,23 +254,41 @@ end
 - <code>warpFd (2x2x16x2 cell array)</code> functional data objects for the time-warp curves
 
 
-The 4D arrays have this structure:
+These 4D arrays have this structure:
 - 2 datasets: CMJ<sub>NA</sub> & CMJ<sub>A</sub> 
 - 2 length standardisations: PAD & LTN
 - 16 landmark registration: 0000-1111
 - 2 continuous registrations: - & C
 
 
-jumpsFDA.m reads the raw datafile, 'compactjumpsdata.mat', which contains anonymised data. It is currently unavailable until ethics approval is granted. It has the following structure:
-- <code>bwall: 64x16 double</code> (bodyweights)
-- <code>grf.raw: 64x16 cell</code> (raw 1D VGRF data of variable lengths)
-- <code>grf.initiation: 64x16 double</code> (jump initiaion index)
-- <code>grf.takeoff: 64x16 double</code> (take-off index)
-- <code>jumpOrder: 104x16 string</code> (master list specifying the the jump type for each trial)
-- <code>nJumpsPerSubject: 64x1 double</code> (how many jumps for each subject)
-- <code>sDataID: 1x64 double</code> (lookup table linking array index to subject ID)
-- <code>sJumpID: 1x104 double</code> (lookup table linking trial index to jump order ID)
+### Models
 
+As 4D arrays they are not easily viewed but running the following commands compiles the results into long tables:
+
+```Matlab
+longPerformance = compileResults( models, 'perf' );
+longTStat = compileResults( models, 'tStat' );
+longCoeffRSq = compileResults( models, 'coeffRSq' );
+longDecomp = compileResults( decomp );
+faultyCountWOA = squeeze(cellfun( @sum, isValid(1,:,:) ))';
+faultyCountALL = squeeze(cellfun( @sum, isValid(2,:,:) ))';
+````
+
+<code>longPerformance</code> is the most important table. It summaries the models' performance and is used to obtain the rankings presented in the paper. It has been placed in [results/ModelOutputs.xlsx](url) for convenient analysis.
+
+
+### Meta-models
+
+The meta models can be obtained using the following command once the results file has been loaded.
+
+```Matlab
+[metaJHtov, metaJHwd, metaPP, metaCL, metaAll ] = fitMetaModels( models, 'interactions' )
+```
+
+The second argument requests models with interactions between the predictors, as used in the paper. Alternatively, <code>'linear'</code> fits  a more straightforward model without interactions. The outputted variables from the function are model objects. The coefficient tables have been placed in [results/MetaModels.xlsx](url) for convenience.
+
+
+### Figures
 
 Other files are dedicated to generating plots of the results. The paper focused on jump height (take-off velocity) and classification. However, models were also produced for jump height (work done) and peak power.
 
@@ -281,6 +308,5 @@ Or, alternatively:
 ```Matlab
 fig5 = plotCoeffRSq( models, ["JHwd" "PP"] );
 ```
-
 
 
