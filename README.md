@@ -27,7 +27,7 @@ It depends on the Matlab library for  functional data analysis which can be foun
 
 ## Raw data
 
-[jumpsFDA](code/jumpsFDA.m) reads the raw datafile [data/compactjumpsdata.mat](data/compactjumpsdata.mat) which contains anonymised data. It is currently unavailable until ethics approval is granted. It has the following structure:
+[jumpsFDA](code/jumpsFDA.m) reads the raw datafile <code>data/compactjumpsdata.mat</code> which contains anonymised data. It is currently unavailable until ethics approval is granted. It has the following structure:
 - <code>bwall: 64x16 double</code> (bodyweights)
 - <code>grf.raw: 64x16 cell</code> (raw 1D VGRF data of variable lengths)
 - <code>grf.initiation: 64x16 double</code> (jump initiaion index)
@@ -274,7 +274,7 @@ faultyCountWOA = squeeze(cellfun( @sum, isValid(1,:,:) ))';
 faultyCountALL = squeeze(cellfun( @sum, isValid(2,:,:) ))';
 ````
 
-<code>longPerformance</code> is the most important table. It summaries the models' performance and is used to obtain the rankings presented in the paper. It has been placed in [results/ModelOutputs.xlsx](url) for convenient analysis.
+<code>longPerformance</code> is the most important table. It summaries the models' performance and is used to obtain the rankings presented in the paper. It has been placed in [results/ModelOutputs.xlsx](results/ModelOutputs.xlsx) for convenient analysis.
 
 
 ### Meta-models
@@ -285,28 +285,27 @@ The meta models can be obtained using the following command once the results fil
 [metaJHtov, metaJHwd, metaPP, metaCL, metaAll ] = fitMetaModels( models, 'interactions' )
 ```
 
-The second argument requests models with interactions between the predictors, as used in the paper. Alternatively, <code>'linear'</code> fits  a more straightforward model without interactions. The outputted variables from the function are model objects. The coefficient tables have been placed in [results/MetaModels.xlsx](url) for convenience.
+The second argument requests models with interactions between the predictors, as used in the paper. Alternatively, <code>'linear'</code> fits  a more straightforward model without interactions. The outputted variables from the function are model objects. The coefficient tables have been placed in [results/MetaModels.xlsx](results/MetaModels.xlsx) for convenience.
 
 
 ### Figures
 
 Other files are dedicated to generating plots of the results. The paper focused on jump height (take-off velocity) and classification. However, models were also produced for jump height (work done) and peak power.
 
-First, load the results file:
 
 ```Matlab
 load( 'results/jumpsAnalysis.mat' )
 	
 [fig1, fig2 ] = plotCurves( vgrfFd, warpFd )
 fig3 = plotDecompScatter( decomp )
-fig4 = plotKeyComponents( vgrfPCA )
+fig5 = plotKeyComponents( vgrfPCA )
 	
-fig5 = fig = plotCoeffRSq( models, ["JHtov" "jumpType"] );
+fig6 = plotCoeffRSq( models, ["JHtov" "jumpType"] );
 ```
 
 Or, alternatively:
 ```Matlab
-fig5 = plotCoeffRSq( models, ["JHwd" "PP"] );
+fig6 = plotCoeffRSq( models, ["JHwd" "PP"] );
 ```
 
 
