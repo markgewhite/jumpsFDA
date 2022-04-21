@@ -282,10 +282,10 @@ faultyCountALL = squeeze(cellfun( @sum, isValid(2,:,:) ))';
 The meta models can be obtained using the following command once the results file has been loaded.
 
 ```Matlab
-[metaJHtov, metaJHwd, metaPP, metaCL, metaAll ] = fitMetaModels( models, 'interactions' )
+[metaJHtov, metaJHwd, metaPP, metaCL, metaAll ] = fitMetaModels( models, 'interactions', true )
 ```
 
-The second argument requests models with interactions between the predictors, as used in the paper. Alternatively, <code>'linear'</code> fits  a more straightforward model without interactions. The outputted variables from the function are model objects. The coefficient tables have been placed in [results/MetaModels.xlsx](results/MetaModels.xlsx) for convenience.
+The second argument requests models with interactions between the predictors, as used in the paper. Alternatively, <code>'linear'</code> fits  a more straightforward model without interactions. The third argument, <code>true</code>, indicates that the predictor type should be split up into PCA/ACP and U/V (unrotated/varimax), as in the paper. The outputted variables from the function are model objects. The coefficient tables have been placed in [results/MetaModels.xlsx](results/MetaModels.xlsx) for convenience.
 
 
 ### Figures
@@ -298,14 +298,14 @@ load( 'results/jumpsAnalysis.mat' )
 	
 [fig1, fig2 ] = plotCurves( vgrfFd, warpFd )
 fig3 = plotDecompScatter( decomp )
-fig5 = plotKeyComponents( vgrfPCA )
+fig4 = plotKeyComponents( vgrfPCA )
 	
-fig6 = plotCoeffRSq( models, ["JHtov" "jumpType"] );
+fig5 = plotCoeffRSq( models, ["JHtov" "jumpType"] );
 ```
 
 Or, alternatively:
 ```Matlab
-fig6 = plotCoeffRSq( models, ["JHwd" "PP"] );
+fig5 = plotCoeffRSq( models, ["JHwd" "PP"] );
 ```
 
 
