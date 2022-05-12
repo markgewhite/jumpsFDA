@@ -204,7 +204,7 @@ end
 
 ```
 
-Note that the final 5 ms before take-off are excluded for the test of monotonicity because with a very few registrations (3/128) the warping gradient turns negative for large number of curves at the end of the time series. Only the large dataset with CMJ<sub>NA</sub> and CMJ<sub>A</sub> are affect where continuous registration is applied to curves preivously registered with 3-4 landmarks: PAD-01111C (87 curves), PAD-1111C (19) and LTN-01111C (38). The warping gradients in these curves only turn negative in the last few milliseconds. This may be due to the rapid changes in VGRF combined with the boundary effect from the end of the time series. These curves need not be excluded if the monotonicity test ignores the last few points.
+Note that the final 5 ms before take-off are excluded for the test of monotonicity because with a very few registrations (3/128) the warping gradient turns negative at the end of the time series. Only the large dataset with CMJ<sub>NA</sub> and CMJ<sub>A</sub> are affected when continuous registration is applied to curves previously registered with 3-4 landmarks: PAD-01111C (87 curves), PAD-1111C (19) and LTN-01111C (38). The warping gradients in these curves only turn negative in the last few milliseconds. This may be due to the rapid changes in VGRF combined with the boundary effect from the end of the time series. These curves need not be excluded if the monotonicity test ignores the last few points.
 
  
 ### Validity check: VGRF curves 
