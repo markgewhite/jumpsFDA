@@ -2,7 +2,8 @@
 *.mat
 *.txt
 ~$*.xlsx
-data/*
 !results/jumpsAnalysis.mat
+!data/compactjumpdata.mat
+
 
 
