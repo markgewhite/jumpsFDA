@@ -1,7 +1,7 @@
 # JumpsFDA
 ### Functional data analysis applied to vertical ground reaction forces obtained from countermovement jumps.
 
-This code supports my draft paper entitled 'The Effects of Curve Registration on Vertical Ground Reaction Force curves of the Countermovement Jump'.  
+This code supports my paper entitled 'The Effects of Curve Registration on Vertical Ground Reaction Force curves of the Countermovement Jump', which is soon to be published by the Journal of Biomechanics. Link forthcoming.
 
 The code generates 1024 linear models that predict jump height, peak power or classify the jumps into those performed with or without arm swing. Each model is based on different data preprocessing operations for:
 - curve length standardisation (padding or time normalisation)
@@ -27,7 +27,7 @@ It depends on the Matlab library for  functional data analysis which can be foun
 
 ## Raw data
 
-[jumpsFDA](code/jumpsFDA.m) reads the raw datafile <code>data/compactjumpsdata.mat</code> which contains anonymised data. It is currently unavailable until ethics approval is granted. It has the following structure:
+[jumpsFDA](code/jumpsFDA.m) reads the raw datafile <code>data/compactjumpsdata.mat</code> which contains anonymised data. 
 - <code>bwall: 64x16 double</code> (bodyweights)
 - <code>grf.raw: 64x16 cell</code> (raw 1D VGRF data of variable lengths)
 - <code>grf.initiation: 64x16 double</code> (jump initiaion index)
@@ -37,7 +37,6 @@ It depends on the Matlab library for  functional data analysis which can be foun
 - <code>sDataID: 1x64 double</code> (lookup table linking array index to subject ID)
 - <code>sJumpID: 1x104 double</code> (lookup table linking trial index to jump order ID)
 
-If approval is not forthcoming I plan to provide dummy data instead.
 
 
 ## Jump initiation
