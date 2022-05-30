@@ -27,7 +27,7 @@ It depends on the Matlab library for  functional data analysis which can be foun
 
 ## Raw data
 
-[jumpsFDA](code/jumpsFDA.m) reads the raw datafile [data/compactjumpdata.mat](/data/compactjumpsdata.mat) which contains anonymised data. 
+[jumpsFDA](code/jumpsFDA.m) reads the raw datafile [data/compactjumpdata.mat](/data/compactjumpdata.mat) which contains anonymised data. 
 - <code>bwall: 64x16 double</code> (bodyweights)
 - <code>grf.raw: 64x16 cell</code> (raw 1D VGRF data of variable lengths)
 - <code>grf.initiation: 64x16 double</code> (jump initiaion index)
